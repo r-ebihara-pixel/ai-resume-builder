@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>履歴書テスト</title>
+  <style>
+    .resume-page {
+      position: relative;
+      width: 210mm;
+      height: 297mm;
+      margin: 0 auto;
+      overflow: hidden;
+      background: #fff;
+      border: 1px solid #ccc;
+    }
+
+    .resume-bg {
+      position: absolute;
+      inset: 0;
+      background-repeat: no-repeat;
+      background-position: center top;
+      background-size: 100% 100%;
+      z-index: 0;
+    }
+
+    .resume-bg-page1 {
+      background-image: url("./mhlw_rirekisyo_page1.png");
+    }
+
+    .field {
+      position: absolute;
+      z-index: 1;
+      font-family: "Yu Gothic", "Meiryo", sans-serif;
+      font-size: 10pt;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    .field-name-kana {
+      top: 80px;
+      left: 160px;
+      width: 300px;
+    }
+
+    .field-name {
+      top: 110px;
+      left: 160px;
+      width: 300px;
+      font-size: 14pt;
+    }
+
+    .field-birth-year {
+      top: 150px;
+      left: 180px;
+      width: 60px;
+      text-align: center;
+    }
+
+    .field-birth-month {
+      top: 150px;
+      left: 260px;
+      width: 40px;
+      text-align: center;
+    }
+
+    .field-birth-day {
+      top: 150px;
+      left: 320px;
+      width: 40px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="resume-page">
+    <div class="resume-bg resume-bg-page1"></div>
+
+    <div class="field field-name-kana">
+      やまだ たろう
+    </div>
+
+    <div class="field field-name">
+      山田 太郎
+    </div>
+
+    <div class="field field-birth-year">
+      1995
+    </div>
+
+    <div class="field field-birth-month">
+      04
+    </div>
+
+    <div class="field field-birth-day">
+      15
+    </div>
+  </div>
+
+  <!-- テスト用：画像がちゃんと読み込めているか確認 -->
+  <img src="./mhlw_rirekisyo_page1.png" style="width:300px; border:1px solid red; margin-top:16px;" />
+</body>
+</html>

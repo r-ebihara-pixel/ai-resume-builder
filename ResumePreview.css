@@ -1,0 +1,73 @@
+/* A4全体の土台 */
+.resume-page {
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+/* 背景画像（厚労省履歴書をスクショしたもの） */
+.resume-bg {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: 100% 100%;
+  z-index: 0;
+}
+
+/* 1ページ目の背景指定 */
+.resume-bg-page1 {
+  background-image: url("/mhlw_rirekisyo_page1.png");
+}
+
+/* 項目テキスト共通 */
+.field {
+  position: absolute;
+  z-index: 1;
+  font-family: "Yu Gothic", "Meiryo", sans-serif;
+  font-size: 10pt;
+  line-height: 1.2;
+}
+
+/* ↓こっからは位置合わせ用。値はあとで微調整OK */
+
+/* 氏名ふりがな */
+.field-name-kana {
+  top: 42mm;
+  left: 40mm;
+  width: 110mm;
+}
+
+/* 氏名 */
+.field-name {
+  top: 48mm;
+  left: 40mm;
+  width: 110mm;
+  font-size: 12pt;
+}
+
+/* 生年月日（年） */
+.field-birth-year {
+  top: 56mm;
+  left: 55mm;
+  width: 15mm;
+  text-align: center;
+}
+
+/* 生年月日（月） */
+.field-birth-month {
+  top: 56mm;
+  left: 80mm;
+  width: 10mm;
+  text-align: center;
+}
+
+/* 生年月日（日） */
+.field-birth-day {
+  top: 56mm;
+  left: 100mm;
+  width: 10mm;
+  text-align: center;
+}
