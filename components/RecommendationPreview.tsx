@@ -54,9 +54,10 @@ export const RecommendationPreview = React.forwardRef<HTMLDivElement, Props>(
                         )}
                     </div>
                 </div>
-                );
+            </div>
+        );
     }
-                );
+);
 
-                RecommendationPreview.displayName = "RecommendationPreview";
-                export default RecommendationPreview;
+RecommendationPreview.displayName = "RecommendationPreview";
+export default RecommendationPreview;
