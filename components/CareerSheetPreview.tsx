@@ -41,8 +41,13 @@ export const CareerSheetPreview = React.forwardRef<HTMLDivElement, Props>(
         `}</style>
 
                 <div className="resume-page w-[210mm] min-h-[297mm] bg-white text-black font-serif text-sm p-[15mm] box-border relative print:shadow-none mx-auto">
-                    {/* Header: Date and Name */}
-                    <div className="flex flex-col items-end mb-4">
+                    {/* Title (Centered) */}
+                    <div className="text-center mb-4">
+                        <h1 className="text-3xl font-bold tracking-[0.5em]">職務経歴書</h1>
+                    </div>
+
+                    {/* Header: Date and Name (Right-aligned below title) */}
+                    <div className="flex flex-col items-end mb-8">
                         <div className="text-xs mb-1">
                             {renderWithMinchoDigits(data.submissionDate ? data.submissionDate + " 現在" : "")}
                         </div>
@@ -52,11 +57,6 @@ export const CareerSheetPreview = React.forwardRef<HTMLDivElement, Props>(
                                 {data.profile.lastName} {data.profile.firstName}
                             </span>
                         </div>
-                    </div>
-
-                    {/* Title (Centered) */}
-                    <div className="text-center mb-8">
-                        <h1 className="text-3xl font-bold tracking-[0.5em]">職務経歴書</h1>
                     </div>
 
                     {/* Career Summary */}
