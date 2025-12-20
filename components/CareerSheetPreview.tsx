@@ -33,26 +33,30 @@ export const CareerSheetPreview = React.forwardRef<HTMLDivElement, Props>(
           @media print {
             body { -webkit-print-color-adjust: exact; }
             .page-break { page-break-before: always; }
+            .resume-page { font-family: "MS Mincho", "MS PMincho", "Hiragino Mincho ProN", serif !important; }
+          }
+          .resume-page {
+            font-family: "MS Mincho", "MS PMincho", "Hiragino Mincho ProN", serif !important;
           }
         `}</style>
 
                 <div className="resume-page w-[210mm] min-h-[297mm] bg-white text-black font-serif text-sm p-[15mm] box-border relative print:shadow-none mx-auto">
-                    {/* Title */}
-                    <div className="flex justify-between items-start mb-6">
-                        <h1 className="text-3xl font-bold tracking-widest">職　務　経　歴　書</h1>
-                        <div className="text-xs mt-2">
+                    {/* Header: Date and Name */}
+                    <div className="flex flex-col items-end mb-4">
+                        <div className="text-xs mb-1">
                             {renderWithMinchoDigits(data.submissionDate ? data.submissionDate + " 現在" : "")}
+                        </div>
+                        <div className="flex items-baseline">
+                            <span className="text-xs mr-4">氏名</span>
+                            <span className="text-xl font-bold">
+                                {data.profile.lastName} {data.profile.firstName}
+                            </span>
                         </div>
                     </div>
 
-                    {/* Name */}
-                    <div className="flex justify-end mb-6">
-                        <div className="text-right">
-                            <div className="text-xs mb-1">氏名</div>
-                            <div className="text-xl font-bold">
-                                {data.profile.lastName} {data.profile.firstName}
-                            </div>
-                        </div>
+                    {/* Title (Centered) */}
+                    <div className="text-center mb-8">
+                        <h1 className="text-3xl font-bold tracking-[0.5em]">職務経歴書</h1>
                     </div>
 
                     {/* Career Summary */}

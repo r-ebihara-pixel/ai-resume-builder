@@ -31,27 +31,32 @@ export const RecommendationPreview = React.forwardRef<HTMLDivElement, Props>(
           @page { size: A4; margin: 0; }
           @media print {
             body { -webkit-print-color-adjust: exact; }
+            .recommendation-page { font-family: "MS Mincho", "MS PMincho", "Hiragino Mincho ProN", serif !important; }
+          }
+          .recommendation-page {
+            font-family: "MS Mincho", "MS PMincho", "Hiragino Mincho ProN", serif !important;
           }
         `}
                 </style>
 
-                {/* Header – centered title */}
-                <div className="mb-8 text-center">
-                    <h1 className="text-2xl font-bold tracking-wider">推　薦　文</h1>
-                </div>
+                <div className="recommendation-page w-full h-full">
+                    {/* Header – centered title */}
+                    <div className="mb-8 text-center text-black">
+                        <h1 className="text-2xl font-bold tracking-wider">推　薦　文</h1>
+                    </div>
 
-                {/* Body – recommendation text */}
-                <div className="text-xs leading-relaxed whitespace-pre-wrap">
-                    {renderWithMinchoDigits(
-                        recommendationText && recommendationText.trim().length > 0
-                            ? recommendationText
-                            : "　"
-                    )}
+                    {/* Body – recommendation text */}
+                    <div className="text-xs leading-relaxed whitespace-pre-wrap">
+                        {renderWithMinchoDigits(
+                            recommendationText && recommendationText.trim().length > 0
+                                ? recommendationText
+                                : "　"
+                        )}
+                    </div>
                 </div>
-            </div>
-        );
+                );
     }
-);
+                );
 
-RecommendationPreview.displayName = "RecommendationPreview";
-export default RecommendationPreview;
+                RecommendationPreview.displayName = "RecommendationPreview";
+                export default RecommendationPreview;
