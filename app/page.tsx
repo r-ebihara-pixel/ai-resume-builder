@@ -451,13 +451,7 @@ export default function ResumeBuilder() {
     const company = rec.targetCompany || "御社";
     const position = rec.targetPosition || "募集ポジション";
 
-    // Header
-    lines.push(`${company} 採用ご担当者様`);
-    lines.push("");
-    lines.push("平素よりお世話になっております。");
-    lines.push("人材紹介会社より、ご推薦候補者のご案内を申し上げます。");
-    lines.push("");
-
+    // Header (Introductory lines removed as requested)
     // Basic info
     if (fullName) {
       lines.push(`候補者名：${fullName}${ageStr ? `（${ageStr}歳）` : ""}`);
