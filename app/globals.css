@@ -356,10 +356,11 @@ body {
   /* 数字用の明朝体フォント（伝統的な文書スタイル） */
   .font-mincho-num {
     font-family:
-      "Noto Serif JP",
+      "MS Mincho",
+      "MS PMincho",
       "Yu Mincho",
       "Hiragino Mincho ProN",
-      "MS Mincho",
+      "Noto Serif JP",
       serif;
   }
 

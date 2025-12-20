@@ -1,0 +1,2 @@
+﻿scripts/test-normalization.ts(2,25): error TS2307: Cannot find module 'dotenv' or its corresponding type declarations.
+scripts/test-normalization.ts(36,29): error TS2339: Property 'data' does not exist on type '{ ok: true; resumeData: ResumeData; warnings?: string[] | undefined; confidence?: number | undefined; }'.

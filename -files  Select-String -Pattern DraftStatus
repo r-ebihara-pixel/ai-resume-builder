@@ -1,0 +1,773 @@
+[1mdiff --git a/app/page.tsx b/app/page.tsx[m
+[1mindex 96f6dc7..3d15895 100644[m
+[1m--- a/app/page.tsx[m
+[1m+++ b/app/page.tsx[m
+[36m@@ -11,6 +11,8 @@[m [mimport GraduationTableModal from "@/components/GraduationTableModal";[m
+ import { ResumeData } from "@/types/resume";[m
+ import { normalizeText, limitTextLength, MOTIVATION_MAX_LENGTH, REQUESTS_MAX_LENGTH, toHalfWidth } from "@/lib/textUtils";[m
+ import { RecommendationPreview } from "@/components/RecommendationPreview";[m
+[32m+[m[32mimport { useResumeStore } from "@/lib/store/resumeStore";[m
+[32m+[m[32mimport { DraftStatus } from "@/components/DraftStatus";[m
+ [m
+ type PostalAddress = {[m
+   prefecture: string;[m
+[36m@@ -126,13 +128,19 @@[m [mtype RecommendationInput = {[m
+ export default function ResumeBuilder() {[m
+   const [activeTab, setActiveTab] = useState<Tab>("basic");[m
+   const [previewMode, setPreviewMode] = useState<"resume" | "career" | "recommendation">("resume");[m
+[31m-  const [resumeData, setResumeData] = useState<ResumeData>(initialResumeData);[m
+[32m+[m[32m  // const [resumeData, setResumeData] = useState<ResumeData>(initialResumeData);[m
+   const [isGraduationTableOpen, setIsGraduationTableOpen] = useState(false);[m
+   const [isLoadingAddress, setIsLoadingAddress] = useState(false);[m
+   const previewRef = useRef<HTMLDivElement>(null);[m
+   const printRef = useRef<HTMLDivElement | null>(null);[m
+   const recommendationPreviewRef = useRef<HTMLDivElement | null>(null);[m
+ [m
+[32m+[m[32m  // Zustand Store[m
+[32m+[m[32m  const hasHydrated = useResumeStore((s) => s.hasHydrated);[m
+[32m+[m[32m  const resumeData = useResumeStore((s) => s.resume);[m
+[32m+[m[32m  const setAll = useResumeStore((s) => s.setAll);[m
+[32m+[m[32m  const setByPath = useResumeStore((s) => s.setByPath);[m
+[32m+[m
+   // AI Generator State[m
+   const [selectedJob, setSelectedJob] = useState<JobType | "">("");[m
+   const [input, setInput] = useState<UserInput>({});[m
+[36m@@ -158,175 +166,174 @@[m [mexport default function ResumeBuilder() {[m
+         // 一度取り込んだら削除（リロードで何度も上書きしないように）[m
+         localStorage.removeItem("latestApplicant");[m
+ [m
+[31m-        setResumeData((prev) => {[m
+[31m-          const newProfile = { ...prev.profile };[m
+[31m-          let hasProfileChanges = false;[m
+[31m-[m
+[31m-          // --- 氏名 ---[m
+[31m-          if (parsed.name && !prev.profile.lastName && !prev.profile.firstName) {[m
+[31m-            const parts = parsed.name.split(/[\s　]+/);[m
+[31m-            if (parts.length >= 2) {[m
+[31m-              newProfile.lastName = parts[0];[m
+[31m-              newProfile.firstName = parts.slice(1).join("");[m
+[31m-            } else {[m
+[31m-              newProfile.lastName = parsed.name;[m
+[31m-            }[m
+[31m-            hasProfileChanges = true;[m
+[31m-          }[m
+[31m-[m
+[31m-          // --- フリガナ（氏名） ---[m
+[31m-          if (parsed.kana && !prev.profile.lastNameKana && !prev.profile.firstNameKana) {[m
+[31m-            const parts = parsed.kana.split(/[\s　]+/);[m
+[31m-            if (parts.length >= 2) {[m
+[31m-              newProfile.lastNameKana = parts[0];[m
+[31m-              newProfile.firstNameKana = parts.slice(1).join("");[m
+[31m-            } else {[m
+[31m-              newProfile.lastNameKana = parsed.kana;[m
+[31m-            }[m
+[31m-            hasProfileChanges = true;[m
+[32m+[m[32m        const prev = useResumeStore.getState().resume;[m
+[32m+[m[32m        const newProfile = { ...prev.profile };[m
+[32m+[m[32m        let hasProfileChanges = false;[m
+[32m+[m
+[32m+[m[32m        // --- 氏名 ---[m
+[32m+[m[32m        if (parsed.name && !prev.profile.lastName && !prev.profile.firstName) {[m
+[32m+[m[32m          const parts = parsed.name.split(/[\s　]+/);[m
+[32m+[m[32m          if (parts.length >= 2) {[m
+[32m+[m[32m            newProfile.lastName = parts[0];[m
+[32m+[m[32m            newProfile.firstName = parts.slice(1).join("");[m
+[32m+[m[32m          } else {[m
+[32m+[m[32m            newProfile.lastName = parsed.name;[m
+           }[m
+[32m+[m[32m          hasProfileChanges = true;[m
+[32m+[m[32m        }[m
+ [m
+[31m-          // --- メール ---[m
+[31m-          if (parsed.email && !prev.profile.email) {[m
+[31m-            newProfile.email = parsed.email;[m
+[31m-            hasProfileChanges = true;[m
+[32m+[m[32m        // --- フリガナ（氏名） ---[m
+[32m+[m[32m        if (parsed.kana && !prev.profile.lastNameKana && !prev.profile.firstNameKana) {[m
+[32m+[m[32m          const parts = parsed.kana.split(/[\s　]+/);[m
+[32m+[m[32m          if (parts.length >= 2) {[m
+[32m+[m[32m            newProfile.lastNameKana = parts[0];[m
+[32m+[m[32m            newProfile.firstNameKana = parts.slice(1).join("");[m
+[32m+[m[32m          } else {[m
+[32m+[m[32m            newProfile.lastNameKana = parsed.kana;[m
+           }[m
+[32m+[m[32m          hasProfileChanges = true;[m
+[32m+[m[32m        }[m
+ [m
+[31m-          // --- 電話 ---[m
+[31m-          if (parsed.phone && !prev.profile.phone) {[m
+[31m-            newProfile.phone = parsed.phone;[m
+[31m-            hasProfileChanges = true;[m
+[31m-          }[m
+[32m+[m[32m        // --- メール ---[m
+[32m+[m[32m        if (parsed.email && !prev.profile.email) {[m
+[32m+[m[32m          newProfile.email = parsed.email;[m
+[32m+[m[32m          hasProfileChanges = true;[m
+[32m+[m[32m        }[m
+ [m
+[31m-          // --- 生年月日 ---[m
+[31m-          if (parsed.birthday) {[m
+[31m-            const [y, m, d] = parsed.birthday.split("-");[m
+[31m-            if (y && m && d) {[m
+[31m-              newProfile.birthday = {[m
+[31m-                year: y,[m
+[31m-                month: String(parseInt(m, 10)),[m
+[31m-                day: String(parseInt(d, 10)),[m
+[31m-              };[m
+[31m-              hasProfileChanges = true;[m
+[31m-            }[m
+[31m-          }[m
+[32m+[m[32m        // --- 電話 ---[m
+[32m+[m[32m        if (parsed.phone && !prev.profile.phone) {[m
+[32m+[m[32m          newProfile.phone = parsed.phone;[m
+[32m+[m[32m          hasProfileChanges = true;[m
+[32m+[m[32m        }[m
+ [m
+[31m-          // --- 性別 ---[m
+[31m-          if (parsed.gender) {[m
+[31m-            if (parsed.gender.includes("男性")) newProfile.gender = "male";[m
+[31m-            else if (parsed.gender.includes("女性")) newProfile.gender = "female";[m
+[32m+[m[32m        // --- 生年月日 ---[m
+[32m+[m[32m        if (parsed.birthday) {[m
+[32m+[m[32m          const [y, m, d] = parsed.birthday.split("-");[m
+[32m+[m[32m          if (y && m && d) {[m
+[32m+[m[32m            newProfile.birthday = {[m
+[32m+[m[32m              year: y,[m
+[32m+[m[32m              month: String(parseInt(m, 10)),[m
+[32m+[m[32m              day: String(parseInt(d, 10)),[m
+[32m+[m[32m            };[m
+             hasProfileChanges = true;[m
+           }[m
+[32m+[m[32m        }[m
+ [m
+[31m-          // --- 住所（漢字） ---[m
+[31m-          if (parsed.address && !prev.profile.address.prefecture && !prev.profile.address.city) {[m
+[31m-            const prefMatch = parsed.address.match(/(北海道|.+?県|.+?府|東京都)/);[m
+[31m-            if (prefMatch) {[m
+[31m-              newProfile.address.prefecture = prefMatch[0];[m
+[31m-              newProfile.address.city = parsed.address.replace(prefMatch[0], "").trim();[m
+[31m-            } else {[m
+[31m-              newProfile.address.city = parsed.address;[m
+[31m-            }[m
+[31m-            hasProfileChanges = true;[m
+[31m-          }[m
+[32m+[m[32m        // --- 性別 ---[m
+[32m+[m[32m        if (parsed.gender) {[m
+[32m+[m[32m          if (parsed.gender.includes("男性")) newProfile.gender = "male";[m
+[32m+[m[32m          else if (parsed.gender.includes("女性")) newProfile.gender = "female";[m
+[32m+[m[32m          hasProfileChanges = true;[m
+[32m+[m[32m        }[m
+ [m
+[31m-          // --- 住所フリガナ ---[m
+[31m-          if (parsed.addressKana && !prev.profile.address.kana) {[m
+[31m-            newProfile.address.kana = parsed.addressKana;[m
+[31m-            hasProfileChanges = true;[m
+[32m+[m[32m        // --- 住所（漢字） ---[m
+[32m+[m[32m        if (parsed.address && !prev.profile.address.prefecture && !prev.profile.address.city) {[m
+[32m+[m[32m          const prefMatch = parsed.address.match(/(北海道|.+?県|.+?府|東京都)/);[m
+[32m+[m[32m          if (prefMatch) {[m
+[32m+[m[32m            newProfile.address.prefecture = prefMatch[0];[m
+[32m+[m[32m            newProfile.address.city = parsed.address.replace(prefMatch[0], "").trim();[m
+[32m+[m[32m          } else {[m
+[32m+[m[32m            newProfile.address.city = parsed.address;[m
+           }[m
+[32m+[m[32m          hasProfileChanges = true;[m
+[32m+[m[32m        }[m
+ [m
+[31m-          // --- 郵便番号 ---[m
+[31m-          if (parsed.postalCode && !prev.profile.address.postalCode) {[m
+[31m-            newProfile.address.postalCode = parsed.postalCode;[m
+[31m-            hasProfileChanges = true;[m
+[31m-          }[m
+[32m+[m[32m        // --- 住所フリガナ ---[m
+[32m+[m[32m        if (parsed.addressKana && !prev.profile.address.kana) {[m
+[32m+[m[32m          newProfile.address.kana = parsed.addressKana;[m
+[32m+[m[32m          hasProfileChanges = true;[m
+[32m+[m[32m        }[m
+ [m
+[31m-          // =========================[m
+[31m-          // ここから profile 以外の項目[m
+[31m-          // =========================[m
+[31m-[m
+[31m-          // --- 学歴（educationRaw を 1レコードとして突っ込む簡易版） ---[m
+[31m-          let newEducation = prev.education;[m
+[31m-          if (parsed.educationRaw && prev.education.length === 0) {[m
+[31m-            newEducation = [[m
+[31m-              {[m
+[31m-                id: crypto.randomUUID(),[m
+[31m-                schoolType: "その他",[m
+[31m-                schoolName: parsed.educationRaw, // まずは生テキストをそのまま[m
+[31m-                department: "",[m
+[31m-                startDate: { year: "", month: "" },[m
+[31m-                endDate: { year: "", month: "" },[m
+[31m-                status: "graduated",[m
+[31m-              },[m
+[31m-            ];[m
+[31m-          }[m
+[32m+[m[32m        // --- 郵便番号 ---[m
+[32m+[m[32m        if (parsed.postalCode && !prev.profile.address.postalCode) {[m
+[32m+[m[32m          newProfile.address.postalCode = parsed.postalCode;[m
+[32m+[m[32m          hasProfileChanges = true;[m
+[32m+[m[32m        }[m
+ [m
+[31m-          // --- 職歴（workHistoryRaw を description に入れる簡易版） ---[m
+[31m-          let newWorkHistory = prev.workHistory;[m
+[31m-          if (parsed.workHistoryRaw && prev.workHistory.length === 0) {[m
+[31m-            newWorkHistory = [[m
+[31m-              {[m
+[31m-                id: crypto.randomUUID(),[m
+[31m-                companyName: "",[m
+[31m-                startDate: { year: "", month: "" },[m
+[31m-                endDate: { year: "", month: "" },[m
+[31m-                isCurrent: false,[m
+[31m-                description: parsed.workHistoryRaw, // 生テキストを説明欄に[m
+[31m-              },[m
+[31m-            ];[m
+[31m-          }[m
+[32m+[m[32m        // =========================[m
+[32m+[m[32m        // ここから profile 以外の項目[m
+[32m+[m[32m        // =========================[m
+[32m+[m
+[32m+[m[32m        // --- 学歴（educationRaw を 1レコードとして突っ込む簡易版） ---[m
+[32m+[m[32m        let newEducation = prev.education;[m
+[32m+[m[32m        if (parsed.educationRaw && prev.education.length === 0) {[m
+[32m+[m[32m          newEducation = [[m
+[32m+[m[32m            {[m
+[32m+[m[32m              id: crypto.randomUUID(),[m
+[32m+[m[32m              schoolType: "その他",[m
+[32m+[m[32m              schoolName: parsed.educationRaw, // まずは生テキストをそのまま[m
+[32m+[m[32m              department: "",[m
+[32m+[m[32m              startDate: { year: "", month: "" },[m
+[32m+[m[32m              endDate: { year: "", month: "" },[m
+[32m+[m[32m              status: "graduated",[m
+[32m+[m[32m            },[m
+[32m+[m[32m          ];[m
+[32m+[m[32m        }[m
+ [m
+[31m-          // --- 免許・資格（licensesRaw を 1件にまとめて入れる簡易版） ---[m
+[31m-          let newCerts = prev.certifications;[m
+[31m-          if (parsed.licensesRaw && prev.certifications.length === 0) {[m
+[31m-            newCerts = [[m
+[31m-              {[m
+[31m-                id: crypto.randomUUID(),[m
+[31m-                date: { year: "", month: "" },[m
+[31m-                name: parsed.licensesRaw,[m
+[31m-              },[m
+[31m-            ];[m
+[31m-          }[m
+[32m+[m[32m        // --- 職歴（workHistoryRaw を description に入れる簡易版） ---[m
+[32m+[m[32m        let newWorkHistory = prev.workHistory;[m
+[32m+[m[32m        if (parsed.workHistoryRaw && prev.workHistory.length === 0) {[m
+[32m+[m[32m          newWorkHistory = [[m
+[32m+[m[32m            {[m
+[32m+[m[32m              id: crypto.randomUUID(),[m
+[32m+[m[32m              companyName: "",[m
+[32m+[m[32m              startDate: { year: "", month: "" },[m
+[32m+[m[32m              endDate: { year: "", month: "" },[m
+[32m+[m[32m              isCurrent: false,[m
+[32m+[m[32m              description: parsed.workHistoryRaw, // 生テキストを説明欄に[m
+[32m+[m[32m            },[m
+[32m+[m[32m          ];[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        // --- 免許・資格（licensesRaw を 1件にまとめて入れる簡易版） ---[m
+[32m+[m[32m        let newCerts = prev.certifications;[m
+[32m+[m[32m        if (parsed.licensesRaw && prev.certifications.length === 0) {[m
+[32m+[m[32m          newCerts = [[m
+[32m+[m[32m            {[m
+[32m+[m[32m              id: crypto.randomUUID(),[m
+[32m+[m[32m              date: { year: "", month: "" },[m
+[32m+[m[32m              name: parsed.licensesRaw,[m
+[32m+[m[32m            },[m
+[32m+[m[32m          ];[m
+[32m+[m[32m        }[m
+ [m
+[31m-          // --- 志望動機 / 自己PR / 本人希望 ---[m
+[31m-          const newMotivation =[m
+[31m-            !prev.motivation && parsed.motivation[m
+[31m-              ? parsed.motivation[m
+[31m-              : prev.motivation;[m
+[31m-[m
+[31m-          const newSelfPromotion =[m
+[31m-            !prev.selfPromotion && parsed.selfPr[m
+[31m-              ? parsed.selfPr[m
+[31m-              : prev.selfPromotion;[m
+[31m-[m
+[31m-          const newRequests =[m
+[31m-            !prev.requests && parsed.requests[m
+[31m-              ? parsed.requests[m
+[31m-              : prev.requests;[m
+[31m-[m
+[31m-          // 何も変わらないなら、そのまま prev を返す[m
+[31m-          const nothingChanged =[m
+[31m-            !hasProfileChanges &&[m
+[31m-            newEducation === prev.education &&[m
+[31m-            newWorkHistory === prev.workHistory &&[m
+[31m-            newCerts === prev.certifications &&[m
+[31m-            newMotivation === prev.motivation &&[m
+[31m-            newSelfPromotion === prev.selfPromotion &&[m
+[31m-            newRequests === prev.requests;[m
+[31m-[m
+[31m-          if (nothingChanged) return prev;[m
+[31m-[m
+[31m-          return {[m
+[31m-            ...prev,[m
+[31m-            profile: newProfile,[m
+[31m-            education: newEducation,[m
+[31m-            workHistory: newWorkHistory,[m
+[31m-            certifications: newCerts,[m
+[31m-            motivation: newMotivation,[m
+[31m-            selfPromotion: newSelfPromotion,[m
+[31m-            requests: newRequests,[m
+[31m-          };[m
+[32m+[m[32m        // --- 志望動機 / 自己PR / 本人希望 ---[m
+[32m+[m[32m        const newMotivation =[m
+[32m+[m[32m          !prev.motivation && parsed.motivation[m
+[32m+[m[32m            ? parsed.motivation[m
+[32m+[m[32m            : prev.motivation;[m
+[32m+[m
+[32m+[m[32m        const newSelfPromotion =[m
+[32m+[m[32m          !prev.selfPromotion && parsed.selfPr[m
+[32m+[m[32m            ? parsed.selfPr[m
+[32m+[m[32m            : prev.selfPromotion;[m
+[32m+[m
+[32m+[m[32m        const newRequests =[m
+[32m+[m[32m          !prev.requests && parsed.requests[m
+[32m+[m[32m            ? parsed.requests[m
+[32m+[m[32m            : prev.requests;[m
+[32m+[m
+[32m+[m[32m        // 何も変わらないなら、そのまま prev を返す[m
+[32m+[m[32m        const nothingChanged =[m
+[32m+[m[32m          !hasProfileChanges &&[m
+[32m+[m[32m          newEducation === prev.education &&[m
+[32m+[m[32m          newWorkHistory === prev.workHistory &&[m
+[32m+[m[32m          newCerts === prev.certifications &&[m
+[32m+[m[32m          newMotivation === prev.motivation &&[m
+[32m+[m[32m          newSelfPromotion === prev.selfPromotion &&[m
+[32m+[m[32m          newRequests === prev.requests;[m
+[32m+[m
+[32m+[m[32m        if (nothingChanged) return;[m
+[32m+[m
+[32m+[m[32m        setAll({[m
+[32m+[m[32m          ...prev,[m
+[32m+[m[32m          profile: newProfile,[m
+[32m+[m[32m          education: newEducation,[m
+[32m+[m[32m          workHistory: newWorkHistory,[m
+[32m+[m[32m          certifications: newCerts,[m
+[32m+[m[32m          motivation: newMotivation,[m
+[32m+[m[32m          selfPromotion: newSelfPromotion,[m
+[32m+[m[32m          requests: newRequests,[m
+         });[m
+       } catch (e) {[m
+         console.error("Failed to load imported data", e);[m
+[36m@@ -336,6 +343,9 @@[m [mexport default function ResumeBuilder() {[m
+     loadImportedData();[m
+   }, []);[m
+ [m
+[32m+[m[32m  // Hydration check[m
+[32m+[m[32m  if (!hasHydrated) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>;[m
+[32m+[m
+   // --- Handlers ---[m
+ [m
+   const handleProfileChange = (field: keyof ResumeData["profile"], value: string) => {[m
+[36m@@ -343,14 +353,11 @@[m [mexport default function ResumeBuilder() {[m
+     if (field === 'phone') {[m
+       newValue = toHalfWidth(value);[m
+     }[m
+[31m-    setResumeData(prev => ({ ...prev, profile: { ...prev.profile, [field]: newValue } }));[m
+[32m+[m[32m    setByPath(`profile.${field}`, newValue);[m
+   };[m
+ [m
+   const handleBirthdayChange = (field: keyof ResumeData["profile"]["birthday"], value: string) => {[m
+[31m-    setResumeData(prev => ({[m
+[31m-      ...prev,[m
+[31m-      profile: { ...prev.profile, birthday: { ...prev.profile.birthday, [field]: value } }[m
+[31m-    }));[m
+[32m+[m[32m    setByPath(`profile.birthday.${field}`, value);[m
+   };[m
+ [m
+   const handleAddressChange = (field: keyof ResumeData["profile"]["address"], value: string) => {[m
+[36m@@ -358,10 +365,7 @@[m [mexport default function ResumeBuilder() {[m
+     if (field === 'postalCode') {[m
+       newValue = toHalfWidth(value);[m
+     }[m
+[31m-    setResumeData(prev => ({[m
+[31m-      ...prev,[m
+[31m-      profile: { ...prev.profile, address: { ...prev.profile.address, [field]: newValue } }[m
+[31m-    }));[m
+[32m+[m[32m    setByPath(`profile.address.${field}`, newValue);[m
+   };[m
+ [m
+   const handleContactAddressChange = (field: keyof ResumeData["profile"]["contactAddress"], value: string) => {[m
+[36m@@ -369,33 +373,26 @@[m [mexport default function ResumeBuilder() {[m
+     if (field === 'postalCode' || field === 'phone') {[m
+       newValue = toHalfWidth(value);[m
+     }[m
+[31m-    setResumeData(prev => ({[m
+[31m-      ...prev,[m
+[31m-      profile: { ...prev.profile, contactAddress: { ...prev.profile.contactAddress, [field]: newValue } }[m
+[31m-    }));[m
+[32m+[m[32m    setByPath(`profile.contactAddress.${field}`, newValue);[m
+   };[m
+ [m
+   // Education Handlers[m
+   const addEducation = () => {[m
+[31m-    setResumeData(prev => ({[m
+[31m-      ...prev,[m
+[31m-      education: [...prev.education, {[m
+[31m-        id: crypto.randomUUID(),[m
+[31m-        schoolType: "大学",[m
+[31m-        schoolName: "",[m
+[31m-        department: "",[m
+[31m-        startDate: { year: "", month: "" },[m
+[31m-        endDate: { year: "", month: "" },[m
+[31m-        status: "graduated"[m
+[31m-      }][m
+[31m-    }));[m
+[32m+[m[32m    const newEdu = [...resumeData.education, {[m
+[32m+[m[32m      id: crypto.randomUUID(),[m
+[32m+[m[32m      schoolType: "大学",[m
+[32m+[m[32m      schoolName: "",[m
+[32m+[m[32m      department: "",[m
+[32m+[m[32m      startDate: { year: "", month: "" },[m
+[32m+[m[32m      endDate: { year: "", month: "" },[m
+[32m+[m[32m      status: "graduated" as const[m
+[32m+[m[32m    }];[m
+[32m+[m[32m    setAll({ education: newEdu });[m
+   };[m
+ [m
+   const removeEducation = (index: number) => {[m
+[31m-    setResumeData(prev => ({[m
+[31m-      ...prev,[m
+[31m-      education: prev.education.filter((_, i) => i !== index)[m
+[31m-    }));[m
+[32m+[m[32m    const newEdu = resumeData.education.filter((_, i) => i !== index);[m
+[32m+[m[32m    setAll({ education: newEdu });[m
+   };[m
+ [m
+   const handleEducationChange = (index: number, field: string, value: any) => {[m
+[36m@@ -403,49 +400,34 @@[m [mexport default function ResumeBuilder() {[m
+     if (typeof value === 'string' && (field.includes('year') || field.includes('month'))) {[m
+       newValue = toHalfWidth(value);[m
+     }[m
+[31m-    setResumeData(prev => {[m
+[31m-      const newEdu = [...prev.education];[m
+[31m-      if (field.includes(".")) {[m
+[31m-        const [parent, child] = field.split(".");[m
+[31m-        // @ts-ignore[m
+[31m-        newEdu[index][parent] = { ...newEdu[index][parent], [child]: newValue };[m
+[31m-      } else {[m
+[31m-        // @ts-ignore[m
+[31m-        newEdu[index][field] = newValue;[m
+[31m-      }[m
+[31m-      return { ...prev, education: newEdu };[m
+[31m-    });[m
+[32m+[m[32m    setByPath(`education.${index}.${field}`, newValue);[m
+   };[m
+ [m
+   // Work History Handlers[m
+   const addWork = () => {[m
+[31m-    setResumeData(prev => ({[m
+[31m-      ...prev,[m
+[31m-      workHistory: [...prev.workHistory, {[m
+[31m-        id: crypto.randomUUID(),[m
+[31m-        companyName: "",[m
+[31m-        startDate: { year: "", month: "" },[m
+[31m-        endDate: { year: "", month: "" },[m
+[31m-        isCurrent: false,[m
+[31m-        description: "",[m
+[31m-        department: "",[m
+[31m-        position: "",[m
+[31m-        employmentType: "",[m
+[31m-        businessDescription: "",[m
+[31m-        companyCapital: "",[m
+[31m-        employeeCount: "",[m
+[31m-        responsibilities: "",[m
+[31m-        achievements: "",[m
+[31m-        environment: "",[m
+[31m-      }][m
+[31m-    }));[m
+[32m+[m[32m    const newWork = [...resumeData.workHistory, {[m
+[32m+[m[32m      id: crypto.randomUUID(),[m
+[32m+[m[32m      companyName: "",[m
+[32m+[m[32m      startDate: { year: "", month: "" },[m
+[32m+[m[32m      endDate: { year: "", month: "" },[m
+[32m+[m[32m      isCurrent: false,[m
+[32m+[m[32m      description: "",[m
+[32m+[m[32m      department: "",[m
+[32m+[m[32m      position: "",[m
+[32m+[m[32m      employmentType: "",[m
+[32m+[m[32m      businessDescription: "",[m
+[32m+[m[32m      companyCapital: "",[m
+[32m+[m[32m      employeeCount: "",[m
+[32m+[m[32m      responsibilities: "",[m
+[32m+[m[32m      achievements: "",[m
+[32m+[m[32m      environment: "",[m
+[32m+[m[32m    }];[m
+[32m+[m[32m    setAll({ workHistory: newWork });[m
+   };[m
+ [m
+   const removeWork = (index: number) => {[m
+[31m-    setResumeData(prev => ({[m
+[31m-      ...prev,[m
+[31m-      workHistory: prev.workHistory.filter((_, i) => i !== index)[m
+[31m-    }));[m
+[32m+[m[32m    const newWork = resumeData.workHistory.filter((_, i) => i !== index);[m
+[32m+[m[32m    setAll({ workHistory: newWork });[m
+   };[m
+ [m
+   const handleWorkChange = (index: number, field: string, value: any) => {[m
+[36m@@ -453,37 +435,22 @@[m [mexport default function ResumeBuilder() {[m
+     if (typeof value === 'string' && (field.includes('year') || field.includes('month'))) {[m
+       newValue = toHalfWidth(value);[m
+     }[m
+[31m-    setResumeData(prev => {[m
+[31m-      const newWork = [...prev.workHistory];[m
+[31m-      if (field.includes(".")) {[m
+[31m-        const [parent, child] = field.split(".");[m
+[31m-        // @ts-ignore[m
+[31m-        newWork[index][parent] = { ...newWork[index][parent], [child]: newValue };[m
+[31m-      } else {[m
+[31m-        // @ts-ignore[m
+[31m-        newWork[index][field] = newValue;[m
+[31m-      }[m
+[31m-      return { ...prev, workHistory: newWork };[m
+[31m-    });[m
+[32m+[m[32m    setByPath(`workHistory.${index}.${field}`, newValue);[m
+   };[m
+ [m
+   // Certifications Handlers[m
+   const addCert = () => {[m
+[31m-    setResumeData(prev => ({[m
+[31m-      ...prev,[m
+[31m-      certifications: [...prev.certifications, {[m
+[31m-        id: crypto.randomUUID(),[m
+[31m-        date: { year: "", month: "" },[m
+[31m-        name: ""[m
+[31m-      }][m
+[31m-    }));[m
+[32m+[m[32m    const newCerts = [...resumeData.certifications, {[m
+[32m+[m[32m      id: crypto.randomUUID(),[m
+[32m+[m[32m      date: { year: "", month: "" },[m
+[32m+[m[32m      name: ""[m
+[32m+[m[32m    }];[m
+[32m+[m[32m    setAll({ certifications: newCerts });[m
+   };[m
+ [m
+   const removeCert = (index: number) => {[m
+[31m-    setResumeData(prev => ({[m
+[31m-      ...prev,[m
+[31m-      certifications: prev.certifications.filter((_, i) => i !== index)[m
+[31m-    }));[m
+[32m+[m[32m    const newCerts = resumeData.certifications.filter((_, i) => i !== index);[m
+[32m+[m[32m    setAll({ certifications: newCerts });[m
+   };[m
+ [m
+   const handleCertChange = (index: number, field: string, value: any) => {[m
+[36m@@ -491,18 +458,7 @@[m [mexport default function ResumeBuilder() {[m
+     if (typeof value === 'string' && (field.includes('year') || field.includes('month'))) {[m
+       newValue = toHalfWidth(value);[m
+     }[m
+[31m-    setResumeData(prev => {[m
+[31m-      const newCert = [...prev.certifications];[m
+[31m-      if (field.includes(".")) {[m
+[31m-        const [parent, child] = field.split(".");[m
+[31m-        // @ts-ignore[m
+[31m-        newCert[index][parent] = { ...newCert[index][parent], [child]: newValue };[m
+[31m-      } else {[m
+[31m-        // @ts-ignore[m
+[31m-        newCert[index][field] = newValue;[m
+[31m-      }[m
+[31m-      return { ...prev, certifications: newCert };[m
+[31m-    });[m
+[32m+[m[32m    setByPath(`certifications.${index}.${field}`, newValue);[m
+   };[m
+ [m
+   // AI Handlers[m
+[36m@@ -523,11 +479,10 @@[m [mexport default function ResumeBuilder() {[m
+     );[m
+     const selfPr = normalizeText(rawSelfPr); // 必要なら limitTextLength を追加[m
+ [m
+[31m-    setResumeData(prev => ({[m
+[31m-      ...prev,[m
+[32m+[m[32m    setAll({[m
+       motivation,[m
+       selfPromotion: selfPr,[m
+[31m-    }));[m
+[32m+[m[32m    });[m
+ [m
+     alert("文章を生成し、履歴書データに反映しました！");[m
+   };[m
+[36m@@ -810,7 +765,7 @@[m [mexport default function ResumeBuilder() {[m
+     const reader = new FileReader();[m
+     reader.onload = (event) => {[m
+       const dataUrl = event.target?.result as string;[m
+[31m-      setResumeData(prev => ({ ...prev, photoUrl: dataUrl }));[m
+[32m+[m[32m      setAll({ photoUrl: dataUrl });[m
+     };[m
+     reader.readAsDataURL(file);[m
+   };[m
+[36m@@ -822,20 +777,14 @@[m [mexport default function ResumeBuilder() {[m
+     const normalized = normalizeText(value);[m
+     const limited = limitTextLength(normalized, MOTIVATION_MAX_LENGTH);[m
+ [m
+[31m-    setResumeData((prev) => ({[m
+[31m-      ...prev,[m
+[31m-      motivation: limited,[m
+[31m-    }));[m
+[32m+[m[32m    setByPath("motivation", limited);[m
+   };[m
+ [m
+   // 自己PR[m
+   const handleSelfPromotionChange = (value: string) => {[m
+     const normalized = normalizeText(value);[m
+ [m
+[31m-    setResumeData((prev) => ({[m
+[31m-      ...prev,[m
+[31m-      selfPromotion: normalized,[m
+[31m-    }));[m
+[32m+[m[32m    setByPath("selfPromotion", normalized);[m
+   };[m
+ [m
+   // 本人希望欄[m
+[36m@@ -843,10 +792,7 @@[m [mexport default function ResumeBuilder() {[m
+     const normalized = normalizeText(value);[m
+     const limited = limitTextLength(normalized, REQUESTS_MAX_LENGTH);[m
+ [m
+[31m-    setResumeData((prev) => ({[m
+[31m-      ...prev,[m
+[31m-      requests: limited,[m
+[31m-    }));[m
+[32m+[m[32m    setByPath("requests", limited);[m
+   };[m
+ [m
+ [m
+[36m@@ -874,38 +820,14 @@[m [mexport default function ResumeBuilder() {[m
+ [m
+       if (target === "address") {[m
+         // 現住所を更新[m
+[31m-        setResumeData((prev) => ({[m
+[31m-          ...prev,[m
+[31m-          profile: {[m
+[31m-            ...prev.profile,[m
+[31m-            address: {[m
+[31m-              ...prev.profile.address,[m
+[31m-              prefecture: address.prefecture,[m
+[31m-              city: address.city + address.town,[m
+[31m-              kana:[m
+[31m-                address.prefectureKana +[m
+[31m-                address.cityKana +[m
+[31m-                address.townKana,[m
+[31m-            },[m
+[31m-          },[m
+[31m-        }));[m
+[32m+[m[32m        setByPath("profile.address.prefecture", address.prefecture);[m
+[32m+[m[32m        setByPath("profile.address.city", address.city + address.town);[m
+[32m+[m[32m        setByPath("profile.address.kana", address.prefectureKana + address.cityKana + address.townKana);[m
+       } else {[m
+         // 連絡先住所を更新[m
+[31m-        setResumeData((prev) => ({[m
+[31m-          ...prev,[m
+[31m-          profile: {[m
+[31m-            ...prev.profile,[m
+[31m-            contactAddress: {[m
+[31m-              ...prev.profile.contactAddress,[m
+[31m-              prefecture: address.prefecture,[m
+[31m-              city: address.city + address.town,[m
+[31m-              kana:[m
+[31m-                address.prefectureKana +[m
+[31m-                address.cityKana +[m
+[31m-                address.townKana,[m
+[31m-            },[m
+[31m-          },[m
+[31m-        }));[m
+[32m+[m[32m        setByPath("profile.contactAddress.prefecture", address.prefecture);[m
+[32m+[m[32m        setByPath("profile.contactAddress.city", address.city + address.town);[m
+[32m+[m[32m        setByPath("profile.contactAddress.kana", address.prefectureKana + address.cityKana + address.townKana);[m
+       }[m
+     } catch (error) {[m
+       console.error("Address search failed", error);[m
+[36m@@ -1050,6 +972,7 @@[m [mexport default function ResumeBuilder() {[m
+             <h1 className="text-xl font-bold text-gray-800">AI履歴書ビルダー Pro</h1>[m
+           </div>[m
+           <div className="flex items-center gap-4">[m
+[32m+[m[32m            <DraftStatus />[m
+             <Link href="/import" className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium">[m
+               <Download size={16} />[m
+               応募データ取り込み[m
+[36m@@ -1063,7 +986,7 @@[m [mexport default function ResumeBuilder() {[m
+             </div>[m
+           </div>[m
+         </div>[m
+[31m-      </header>[m
+[32m+[m[32m      </header >[m
+ [m
+       <main className="flex-1 max-w-6xl mx-auto w-full p-4 md:p-8">[m
+         {/* Tabs */}[m
+[36m@@ -1107,11 +1030,11 @@[m [mexport default function ResumeBuilder() {[m
+                     onChange={(e) => {[m
+                       const val = e.target.value;[m
+                       if (!val) {[m
+[31m-                        setResumeData(prev => ({ ...prev, submissionDate: "" }));[m
+[32m+[m[32m                        setAll({ submissionDate: "" });[m
+                         return;[m
+                       }[m
+                       const [y, m, d] = val.split('-');[m
+[31m-                      setResumeData(prev => ({ ...prev, submissionDate: `${y}年${parseInt(m)}月${parseInt(d)}日` }));[m
+[32m+[m[32m                      setAll({ submissionDate: `${y}年${parseInt(m)}月${parseInt(d)}日` });[m
+                     }}[m
+                     className="w-full p-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"[m
+                   />[m
+[36m@@ -1232,7 +1155,7 @@[m [mexport default function ResumeBuilder() {[m
+                             <img src={resumeData.photoUrl} alt="証明写真プレビュー" className="w-16 h-20 object-cover border border-gray-300 rounded" />[m
+                             <button[m
+                               type="button"[m
+[31m-                              onClick={() => setResumeData(prev => ({ ...prev, photoUrl: "" }))}[m
+[32m+[m[32m                              onClick={() => setAll({ photoUrl: "" })}[m
+                               className="text-red-600 hover:text-red-700 text-sm"[m
+                             >[m
+                               削除[m
+[36m@@ -1825,7 +1748,7 @@[m [mexport default function ResumeBuilder() {[m
+                       <textarea[m
+                         className="w-full h-40 p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"[m
+                         value={resumeData.selfPromotion}[m
+[31m-                        onChange={(e) => setResumeData(prev => ({ ...prev, selfPromotion: e.target.value }))}[m
+[32m+[m[32m                        onChange={(e) => setAll({ selfPromotion: e.target.value })}[m
+                         placeholder="ここに生成された自己PRが表示されます"[m
+                       />[m
+                     </div>[m
+[36m@@ -1870,7 +1793,7 @@[m [mexport default function ResumeBuilder() {[m
+                     className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"[m
+                     value={resumeData.careerSummary || ""}[m
+                     onChange={(e) =>[m
+[31m-                      setResumeData(prev => ({ ...prev, careerSummary: e.target.value }))[m
+[32m+[m[32m                      setAll({ careerSummary: e.target.value })[m
+                     }[m
+                     placeholder="1〜5行でこれまでの経験の要約を入力します。空欄の場合は自動生成されます。"[m
+                     rows={3}[m
+[36m@@ -1885,7 +1808,7 @@[m [mexport default function ResumeBuilder() {[m
+                     className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"[m
+                     value={resumeData.skillsSummary || ""}[m
+                     onChange={(e) =>[m
+[31m-                      setResumeData(prev => ({ ...prev, skillsSummary: e.target.value }))[m
+[32m+[m[32m                      setAll({ skillsSummary: e.target.value })[m
+                     }[m
+                     placeholder="扱える技術・ツール・業務スキルなどを入力します。"[m
+                     rows={3}[m
+[36m@@ -1900,7 +1823,7 @@[m [mexport default function ResumeBuilder() {[m
+                     className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"[m
+                     value={resumeData.careerPr || ""}[m
+                     onChange={(e) =>[m
+[31m-                      setResumeData(prev => ({ ...prev, careerPr: e.target.value }))[m
+[32m+[m[32m                      setAll({ careerPr: e.target.value })[m
+                     }[m
+                     placeholder="職務経歴書用の自己PRを入力します。空欄の場合は履歴書の自己PRが使われます。"[m
+                     rows={4}[m
+[36m@@ -2176,6 +2099,6 @@[m [mexport default function ResumeBuilder() {[m
+         isOpen={isGraduationTableOpen}[m
+         onClose={() => setIsGraduationTableOpen(false)}[m
+       />[m
+[31m-    </div>[m
+[32m+[m[32m    </div >[m
+   );[m
+ }[m

@@ -17,9 +17,18 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
     : "";
 
   // 学歴・職歴を統合
+  const sortedEducation = [...data.education].sort((a, b) => {
+    const yearA = parseInt(a.startDate.year) || 0;
+    const monthA = parseInt(a.startDate.month) || 0;
+    const yearB = parseInt(b.startDate.year) || 0;
+    const monthB = parseInt(b.startDate.month) || 0;
+    if (yearA !== yearB) return yearA - yearB;
+    return monthA - monthB;
+  });
+
   const combinedHistory = [
     { type: "header", text: "学歴", year: "", month: "" },
-    ...data.education.flatMap(edu => [
+    ...sortedEducation.flatMap(edu => [
       {
         type: "education",
         year: edu.startDate.year,
@@ -68,6 +77,10 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
         @media print {
           body { -webkit-print-color-adjust: exact; }
           .page-break { page-break-before: always; }
+          .resume-page { font-family: "MS Mincho", "MS PMincho", "Hiragino Mincho ProN", serif !important; }
+        }
+        .resume-page {
+          font-family: "MS Mincho", "MS PMincho", "Hiragino Mincho ProN", serif !important;
         }
       `}</style>
 
@@ -174,18 +187,7 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
               </div>
             </div>
 
-            {/* 右側：電話とEmail */}
-            <div className="w-[53mm] flex flex-col">
-              {/* 電話 (16mm) */}
-              <div className="h-[16mm] flex border-b border-black">
-                <div className="w-[13mm] border-r border-black flex items-start px-1 pt-1">
-                  <span className="text-xs">電話</span>
-                </div>
-                <div className="flex-1 flex items-center justify-center px-1">
-                  <span className="text-xs">{renderWithMinchoDigits(data.profile.phone)}</span>
-                </div>
-              </div>
-            </div>
+
 
             {/* 右側：電話とEmail */}
             <div className="w-[53mm] flex flex-col">
@@ -195,7 +197,7 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
                   <span className="text-xs">電話</span>
                 </div>
                 <div className="flex-1 flex items-center justify-center px-1">
-                  <span className="text-xs">{data.profile.contactAddress?.phone}</span>
+                  <span className="text-xs">{data.profile.contactAddress?.phone || data.profile.phone}</span>
                 </div>
               </div>
               {/* Email (16mm) */}
@@ -204,7 +206,7 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
                   <span className="text-xs">E-mail</span>
                 </div>
                 <div className="flex-1 flex items-center justify-center px-1 text-[10px] break-all">
-                  <span className="text-xs">{data.profile.contactAddress?.email}</span>
+                  <span className="text-xs">{data.profile.contactAddress?.email || data.profile.email}</span>
                 </div>
               </div>
             </div>

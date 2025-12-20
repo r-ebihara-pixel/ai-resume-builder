@@ -4,13 +4,15 @@ import { useState, useRef, useEffect } from "react";
 import { JOB_TEMPLATES, JobType } from "@/lib/data/jobTemplates";
 import { generateText, UserInput } from "@/lib/generator";
 import { Calendar, User, FileText, Wand2, Download, Copy, Loader2, Plus, Trash2, Search, BookOpen, MessageSquare } from "lucide-react";
-import Link from "next/link";
 import { ResumePreview } from "@/components/ResumePreview";
 import { CareerSheetPreview } from "@/components/CareerSheetPreview";
 import GraduationTableModal from "@/components/GraduationTableModal";
 import { ResumeData } from "@/types/resume";
 import { normalizeText, limitTextLength, MOTIVATION_MAX_LENGTH, REQUESTS_MAX_LENGTH, toHalfWidth } from "@/lib/textUtils";
 import { RecommendationPreview } from "@/components/RecommendationPreview";
+import { useResumeStore } from "@/lib/store/resumeStore";
+import { DraftStatus } from "@/components/DraftStatus";
+import { initialResumeData } from "@/lib/initialResumeData";
 
 type PostalAddress = {
   prefecture: string;
@@ -93,26 +95,7 @@ type Tab =
   | "recommendation"
   | "preview";
 
-const initialResumeData: ResumeData = {
-  profile: {
-    lastName: "", firstName: "",
-    lastNameKana: "", firstNameKana: "",
-    birthday: { year: "", month: "", day: "" },
-    gender: "",
-    phone: "",
-    email: "",
-    address: { postalCode: "", prefecture: "", city: "", block: "", building: "", kana: "" },
-    contactAddress: { postalCode: "", prefecture: "", city: "", block: "", building: "", kana: "", phone: "", email: "" },
-  },
-  education: [],
-  workHistory: [],
-  certifications: [],
-  selfPromotion: "",
-  motivation: "",
-  requests: "",
-  submissionDate: new Date().toISOString().split('T')[0].replace(/-/g, '/'),
-  photoUrl: "",
-};
+
 
 type RecommendationInput = {
   targetCompany: string;
@@ -126,12 +109,18 @@ type RecommendationInput = {
 export default function ResumeBuilder() {
   const [activeTab, setActiveTab] = useState<Tab>("basic");
   const [previewMode, setPreviewMode] = useState<"resume" | "career" | "recommendation">("resume");
-  const [resumeData, setResumeData] = useState<ResumeData>(initialResumeData);
+  // const [resumeData, setResumeData] = useState<ResumeData>(initialResumeData);
   const [isGraduationTableOpen, setIsGraduationTableOpen] = useState(false);
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const printRef = useRef<HTMLDivElement | null>(null);
   const recommendationPreviewRef = useRef<HTMLDivElement | null>(null);
+
+  // Zustand Store
+  const hasHydrated = useResumeStore((s) => s.hasHydrated);
+  const resumeData = useResumeStore((s) => s.resume);
+  const setAll = useResumeStore((s) => s.setAll);
+  const setByPath = useResumeStore((s) => s.setByPath);
 
   // AI Generator State
   const [selectedJob, setSelectedJob] = useState<JobType | "">("");
@@ -146,195 +135,17 @@ export default function ResumeBuilder() {
       matchReason: "",
     });
 
-  // Import Data Effect
-  useEffect(() => {
-    const loadImportedData = () => {
-      const storedData = localStorage.getItem("latestApplicant");
-      if (!storedData) return;
+  // Normalization State
+  const [rawPasteText, setRawPasteText] = useState("");
+  const [isNormalizing, setIsNormalizing] = useState(false);
+  const [normalizationWarnings, setNormalizationWarnings] = useState<string[]>([]);
+  const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
+  const [pendingResumeData, setPendingResumeData] = useState<ResumeData | null>(null);
+  const [lastAiResult, setLastAiResult] = useState<any>(null);
 
-      try {
-        const parsed = JSON.parse(storedData);
-        console.log("[RESUME] loaded latestApplicant:", parsed);
-        // 一度取り込んだら削除（リロードで何度も上書きしないように）
-        localStorage.removeItem("latestApplicant");
 
-        setResumeData((prev) => {
-          const newProfile = { ...prev.profile };
-          let hasProfileChanges = false;
-
-          // --- 氏名 ---
-          if (parsed.name && !prev.profile.lastName && !prev.profile.firstName) {
-            const parts = parsed.name.split(/[\s　]+/);
-            if (parts.length >= 2) {
-              newProfile.lastName = parts[0];
-              newProfile.firstName = parts.slice(1).join("");
-            } else {
-              newProfile.lastName = parsed.name;
-            }
-            hasProfileChanges = true;
-          }
-
-          // --- フリガナ（氏名） ---
-          if (parsed.kana && !prev.profile.lastNameKana && !prev.profile.firstNameKana) {
-            const parts = parsed.kana.split(/[\s　]+/);
-            if (parts.length >= 2) {
-              newProfile.lastNameKana = parts[0];
-              newProfile.firstNameKana = parts.slice(1).join("");
-            } else {
-              newProfile.lastNameKana = parsed.kana;
-            }
-            hasProfileChanges = true;
-          }
-
-          // --- メール ---
-          if (parsed.email && !prev.profile.email) {
-            newProfile.email = parsed.email;
-            hasProfileChanges = true;
-          }
-
-          // --- 電話 ---
-          if (parsed.phone && !prev.profile.phone) {
-            newProfile.phone = parsed.phone;
-            hasProfileChanges = true;
-          }
-
-          // --- 生年月日 ---
-          if (parsed.birthday) {
-            const [y, m, d] = parsed.birthday.split("-");
-            if (y && m && d) {
-              newProfile.birthday = {
-                year: y,
-                month: String(parseInt(m, 10)),
-                day: String(parseInt(d, 10)),
-              };
-              hasProfileChanges = true;
-            }
-          }
-
-          // --- 性別 ---
-          if (parsed.gender) {
-            if (parsed.gender.includes("男性")) newProfile.gender = "male";
-            else if (parsed.gender.includes("女性")) newProfile.gender = "female";
-            hasProfileChanges = true;
-          }
-
-          // --- 住所（漢字） ---
-          if (parsed.address && !prev.profile.address.prefecture && !prev.profile.address.city) {
-            const prefMatch = parsed.address.match(/(北海道|.+?県|.+?府|東京都)/);
-            if (prefMatch) {
-              newProfile.address.prefecture = prefMatch[0];
-              newProfile.address.city = parsed.address.replace(prefMatch[0], "").trim();
-            } else {
-              newProfile.address.city = parsed.address;
-            }
-            hasProfileChanges = true;
-          }
-
-          // --- 住所フリガナ ---
-          if (parsed.addressKana && !prev.profile.address.kana) {
-            newProfile.address.kana = parsed.addressKana;
-            hasProfileChanges = true;
-          }
-
-          // --- 郵便番号 ---
-          if (parsed.postalCode && !prev.profile.address.postalCode) {
-            newProfile.address.postalCode = parsed.postalCode;
-            hasProfileChanges = true;
-          }
-
-          // =========================
-          // ここから profile 以外の項目
-          // =========================
-
-          // --- 学歴（educationRaw を 1レコードとして突っ込む簡易版） ---
-          let newEducation = prev.education;
-          if (parsed.educationRaw && prev.education.length === 0) {
-            newEducation = [
-              {
-                id: crypto.randomUUID(),
-                schoolType: "その他",
-                schoolName: parsed.educationRaw, // まずは生テキストをそのまま
-                department: "",
-                startDate: { year: "", month: "" },
-                endDate: { year: "", month: "" },
-                status: "graduated",
-              },
-            ];
-          }
-
-          // --- 職歴（workHistoryRaw を description に入れる簡易版） ---
-          let newWorkHistory = prev.workHistory;
-          if (parsed.workHistoryRaw && prev.workHistory.length === 0) {
-            newWorkHistory = [
-              {
-                id: crypto.randomUUID(),
-                companyName: "",
-                startDate: { year: "", month: "" },
-                endDate: { year: "", month: "" },
-                isCurrent: false,
-                description: parsed.workHistoryRaw, // 生テキストを説明欄に
-              },
-            ];
-          }
-
-          // --- 免許・資格（licensesRaw を 1件にまとめて入れる簡易版） ---
-          let newCerts = prev.certifications;
-          if (parsed.licensesRaw && prev.certifications.length === 0) {
-            newCerts = [
-              {
-                id: crypto.randomUUID(),
-                date: { year: "", month: "" },
-                name: parsed.licensesRaw,
-              },
-            ];
-          }
-
-          // --- 志望動機 / 自己PR / 本人希望 ---
-          const newMotivation =
-            !prev.motivation && parsed.motivation
-              ? parsed.motivation
-              : prev.motivation;
-
-          const newSelfPromotion =
-            !prev.selfPromotion && parsed.selfPr
-              ? parsed.selfPr
-              : prev.selfPromotion;
-
-          const newRequests =
-            !prev.requests && parsed.requests
-              ? parsed.requests
-              : prev.requests;
-
-          // 何も変わらないなら、そのまま prev を返す
-          const nothingChanged =
-            !hasProfileChanges &&
-            newEducation === prev.education &&
-            newWorkHistory === prev.workHistory &&
-            newCerts === prev.certifications &&
-            newMotivation === prev.motivation &&
-            newSelfPromotion === prev.selfPromotion &&
-            newRequests === prev.requests;
-
-          if (nothingChanged) return prev;
-
-          return {
-            ...prev,
-            profile: newProfile,
-            education: newEducation,
-            workHistory: newWorkHistory,
-            certifications: newCerts,
-            motivation: newMotivation,
-            selfPromotion: newSelfPromotion,
-            requests: newRequests,
-          };
-        });
-      } catch (e) {
-        console.error("Failed to load imported data", e);
-      }
-    };
-
-    loadImportedData();
-  }, []);
+  // Hydration check
+  if (!hasHydrated) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>;
 
   // --- Handlers ---
 
@@ -343,14 +154,11 @@ export default function ResumeBuilder() {
     if (field === 'phone') {
       newValue = toHalfWidth(value);
     }
-    setResumeData(prev => ({ ...prev, profile: { ...prev.profile, [field]: newValue } }));
+    setByPath(`profile.${field}`, newValue);
   };
 
   const handleBirthdayChange = (field: keyof ResumeData["profile"]["birthday"], value: string) => {
-    setResumeData(prev => ({
-      ...prev,
-      profile: { ...prev.profile, birthday: { ...prev.profile.birthday, [field]: value } }
-    }));
+    setByPath(`profile.birthday.${field}`, value);
   };
 
   const handleAddressChange = (field: keyof ResumeData["profile"]["address"], value: string) => {
@@ -358,10 +166,7 @@ export default function ResumeBuilder() {
     if (field === 'postalCode') {
       newValue = toHalfWidth(value);
     }
-    setResumeData(prev => ({
-      ...prev,
-      profile: { ...prev.profile, address: { ...prev.profile.address, [field]: newValue } }
-    }));
+    setByPath(`profile.address.${field}`, newValue);
   };
 
   const handleContactAddressChange = (field: keyof ResumeData["profile"]["contactAddress"], value: string) => {
@@ -369,33 +174,26 @@ export default function ResumeBuilder() {
     if (field === 'postalCode' || field === 'phone') {
       newValue = toHalfWidth(value);
     }
-    setResumeData(prev => ({
-      ...prev,
-      profile: { ...prev.profile, contactAddress: { ...prev.profile.contactAddress, [field]: newValue } }
-    }));
+    setByPath(`profile.contactAddress.${field}`, newValue);
   };
 
   // Education Handlers
   const addEducation = () => {
-    setResumeData(prev => ({
-      ...prev,
-      education: [...prev.education, {
-        id: crypto.randomUUID(),
-        schoolType: "大学",
-        schoolName: "",
-        department: "",
-        startDate: { year: "", month: "" },
-        endDate: { year: "", month: "" },
-        status: "graduated"
-      }]
-    }));
+    const newEdu = [...resumeData.education, {
+      id: crypto.randomUUID(),
+      schoolType: "大学",
+      schoolName: "",
+      department: "",
+      startDate: { year: "", month: "" },
+      endDate: { year: "", month: "" },
+      status: "graduated" as const
+    }];
+    setAll({ education: newEdu });
   };
 
   const removeEducation = (index: number) => {
-    setResumeData(prev => ({
-      ...prev,
-      education: prev.education.filter((_, i) => i !== index)
-    }));
+    const newEdu = resumeData.education.filter((_, i) => i !== index);
+    setAll({ education: newEdu });
   };
 
   const handleEducationChange = (index: number, field: string, value: any) => {
@@ -403,49 +201,34 @@ export default function ResumeBuilder() {
     if (typeof value === 'string' && (field.includes('year') || field.includes('month'))) {
       newValue = toHalfWidth(value);
     }
-    setResumeData(prev => {
-      const newEdu = [...prev.education];
-      if (field.includes(".")) {
-        const [parent, child] = field.split(".");
-        // @ts-ignore
-        newEdu[index][parent] = { ...newEdu[index][parent], [child]: newValue };
-      } else {
-        // @ts-ignore
-        newEdu[index][field] = newValue;
-      }
-      return { ...prev, education: newEdu };
-    });
+    setByPath(`education.${index}.${field}`, newValue);
   };
 
   // Work History Handlers
   const addWork = () => {
-    setResumeData(prev => ({
-      ...prev,
-      workHistory: [...prev.workHistory, {
-        id: crypto.randomUUID(),
-        companyName: "",
-        startDate: { year: "", month: "" },
-        endDate: { year: "", month: "" },
-        isCurrent: false,
-        description: "",
-        department: "",
-        position: "",
-        employmentType: "",
-        businessDescription: "",
-        companyCapital: "",
-        employeeCount: "",
-        responsibilities: "",
-        achievements: "",
-        environment: "",
-      }]
-    }));
+    const newWork = [...resumeData.workHistory, {
+      id: crypto.randomUUID(),
+      companyName: "",
+      startDate: { year: "", month: "" },
+      endDate: { year: "", month: "" },
+      isCurrent: false,
+      description: "",
+      department: "",
+      position: "",
+      employmentType: "",
+      businessDescription: "",
+      companyCapital: "",
+      employeeCount: "",
+      responsibilities: "",
+      achievements: "",
+      environment: "",
+    }];
+    setAll({ workHistory: newWork });
   };
 
   const removeWork = (index: number) => {
-    setResumeData(prev => ({
-      ...prev,
-      workHistory: prev.workHistory.filter((_, i) => i !== index)
-    }));
+    const newWork = resumeData.workHistory.filter((_, i) => i !== index);
+    setAll({ workHistory: newWork });
   };
 
   const handleWorkChange = (index: number, field: string, value: any) => {
@@ -453,37 +236,22 @@ export default function ResumeBuilder() {
     if (typeof value === 'string' && (field.includes('year') || field.includes('month'))) {
       newValue = toHalfWidth(value);
     }
-    setResumeData(prev => {
-      const newWork = [...prev.workHistory];
-      if (field.includes(".")) {
-        const [parent, child] = field.split(".");
-        // @ts-ignore
-        newWork[index][parent] = { ...newWork[index][parent], [child]: newValue };
-      } else {
-        // @ts-ignore
-        newWork[index][field] = newValue;
-      }
-      return { ...prev, workHistory: newWork };
-    });
+    setByPath(`workHistory.${index}.${field}`, newValue);
   };
 
   // Certifications Handlers
   const addCert = () => {
-    setResumeData(prev => ({
-      ...prev,
-      certifications: [...prev.certifications, {
-        id: crypto.randomUUID(),
-        date: { year: "", month: "" },
-        name: ""
-      }]
-    }));
+    const newCerts = [...resumeData.certifications, {
+      id: crypto.randomUUID(),
+      date: { year: "", month: "" },
+      name: ""
+    }];
+    setAll({ certifications: newCerts });
   };
 
   const removeCert = (index: number) => {
-    setResumeData(prev => ({
-      ...prev,
-      certifications: prev.certifications.filter((_, i) => i !== index)
-    }));
+    const newCerts = resumeData.certifications.filter((_, i) => i !== index);
+    setAll({ certifications: newCerts });
   };
 
   const handleCertChange = (index: number, field: string, value: any) => {
@@ -491,18 +259,7 @@ export default function ResumeBuilder() {
     if (typeof value === 'string' && (field.includes('year') || field.includes('month'))) {
       newValue = toHalfWidth(value);
     }
-    setResumeData(prev => {
-      const newCert = [...prev.certifications];
-      if (field.includes(".")) {
-        const [parent, child] = field.split(".");
-        // @ts-ignore
-        newCert[index][parent] = { ...newCert[index][parent], [child]: newValue };
-      } else {
-        // @ts-ignore
-        newCert[index][field] = newValue;
-      }
-      return { ...prev, certifications: newCert };
-    });
+    setByPath(`certifications.${index}.${field}`, newValue);
   };
 
   // AI Handlers
@@ -523,11 +280,10 @@ export default function ResumeBuilder() {
     );
     const selfPr = normalizeText(rawSelfPr); // 必要なら limitTextLength を追加
 
-    setResumeData(prev => ({
-      ...prev,
+    setAll({
       motivation,
       selfPromotion: selfPr,
-    }));
+    });
 
     alert("文章を生成し、履歴書データに反映しました！");
   };
@@ -810,7 +566,7 @@ export default function ResumeBuilder() {
     const reader = new FileReader();
     reader.onload = (event) => {
       const dataUrl = event.target?.result as string;
-      setResumeData(prev => ({ ...prev, photoUrl: dataUrl }));
+      setAll({ photoUrl: dataUrl });
     };
     reader.readAsDataURL(file);
   };
@@ -822,20 +578,14 @@ export default function ResumeBuilder() {
     const normalized = normalizeText(value);
     const limited = limitTextLength(normalized, MOTIVATION_MAX_LENGTH);
 
-    setResumeData((prev) => ({
-      ...prev,
-      motivation: limited,
-    }));
+    setByPath("motivation", limited);
   };
 
   // 自己PR
   const handleSelfPromotionChange = (value: string) => {
     const normalized = normalizeText(value);
 
-    setResumeData((prev) => ({
-      ...prev,
-      selfPromotion: normalized,
-    }));
+    setByPath("selfPromotion", normalized);
   };
 
   // 本人希望欄
@@ -843,10 +593,7 @@ export default function ResumeBuilder() {
     const normalized = normalizeText(value);
     const limited = limitTextLength(normalized, REQUESTS_MAX_LENGTH);
 
-    setResumeData((prev) => ({
-      ...prev,
-      requests: limited,
-    }));
+    setByPath("requests", limited);
   };
 
 
@@ -874,44 +621,161 @@ export default function ResumeBuilder() {
 
       if (target === "address") {
         // 現住所を更新
-        setResumeData((prev) => ({
-          ...prev,
-          profile: {
-            ...prev.profile,
-            address: {
-              ...prev.profile.address,
-              prefecture: address.prefecture,
-              city: address.city + address.town,
-              kana:
-                address.prefectureKana +
-                address.cityKana +
-                address.townKana,
-            },
-          },
-        }));
+        setByPath("profile.address.prefecture", address.prefecture);
+        setByPath("profile.address.city", address.city + address.town);
+        setByPath("profile.address.kana", address.prefectureKana + address.cityKana + address.townKana);
       } else {
         // 連絡先住所を更新
-        setResumeData((prev) => ({
-          ...prev,
-          profile: {
-            ...prev.profile,
-            contactAddress: {
-              ...prev.profile.contactAddress,
-              prefecture: address.prefecture,
-              city: address.city + address.town,
-              kana:
-                address.prefectureKana +
-                address.cityKana +
-                address.townKana,
-            },
-          },
-        }));
+        setByPath("profile.contactAddress.prefecture", address.prefecture);
+        setByPath("profile.contactAddress.city", address.city + address.town);
+        setByPath("profile.contactAddress.kana", address.prefectureKana + address.cityKana + address.townKana);
       }
     } catch (error) {
       console.error("Address search failed", error);
       alert("住所検索に失敗しました");
     } finally {
       setIsLoadingAddress(false);
+    }
+  };
+
+  // --- Normalization & Deep Merge ---
+
+  const mergeResumeData = (current: ResumeData, incoming: ResumeData): ResumeData => {
+    const next = structuredClone(current);
+
+    const isNonEmpty = (v: any) =>
+      typeof v === "string" ? v.trim().length > 0 : v !== null && v !== undefined;
+
+    const setIfNonEmpty = (setter: () => void, v: any) => {
+      if (isNonEmpty(v)) setter();
+    };
+
+    // ===== profile =====
+    setIfNonEmpty(() => (next.profile.lastName = incoming.profile.lastName), incoming.profile.lastName);
+    setIfNonEmpty(() => (next.profile.firstName = incoming.profile.firstName), incoming.profile.firstName);
+    setIfNonEmpty(() => (next.profile.lastNameKana = incoming.profile.lastNameKana), incoming.profile.lastNameKana);
+    setIfNonEmpty(() => (next.profile.firstNameKana = incoming.profile.firstNameKana), incoming.profile.firstNameKana);
+    setIfNonEmpty(() => (next.profile.phone = incoming.profile.phone), incoming.profile.phone);
+    setIfNonEmpty(() => (next.profile.email = incoming.profile.email), incoming.profile.email);
+
+    // birthday
+    if (
+      incoming.profile.birthday?.year?.trim() ||
+      incoming.profile.birthday?.month?.trim() ||
+      incoming.profile.birthday?.day?.trim()
+    ) {
+      next.profile.birthday = incoming.profile.birthday;
+    }
+
+    setIfNonEmpty(() => (next.profile.gender = incoming.profile.gender), incoming.profile.gender);
+
+    // address（postalCode有無で条件分岐しない）
+    setIfNonEmpty(() => (next.profile.address.postalCode = incoming.profile.address.postalCode), incoming.profile.address.postalCode);
+    setIfNonEmpty(() => (next.profile.address.prefecture = incoming.profile.address.prefecture), incoming.profile.address.prefecture);
+    setIfNonEmpty(() => (next.profile.address.city = incoming.profile.address.city), incoming.profile.address.city);
+    setIfNonEmpty(() => (next.profile.address.block = incoming.profile.address.block), incoming.profile.address.block);
+    setIfNonEmpty(() => (next.profile.address.building = incoming.profile.address.building), incoming.profile.address.building);
+    setIfNonEmpty(() => (next.profile.address.kana = incoming.profile.address.kana), incoming.profile.address.kana);
+
+    // contactAddress
+    setIfNonEmpty(() => (next.profile.contactAddress.postalCode = incoming.profile.contactAddress.postalCode), incoming.profile.contactAddress.postalCode);
+    setIfNonEmpty(() => (next.profile.contactAddress.prefecture = incoming.profile.contactAddress.prefecture), incoming.profile.contactAddress.prefecture);
+    setIfNonEmpty(() => (next.profile.contactAddress.city = incoming.profile.contactAddress.city), incoming.profile.contactAddress.city);
+    setIfNonEmpty(() => (next.profile.contactAddress.block = incoming.profile.contactAddress.block), incoming.profile.contactAddress.block);
+    setIfNonEmpty(() => (next.profile.contactAddress.building = incoming.profile.contactAddress.building), incoming.profile.contactAddress.building);
+    setIfNonEmpty(() => (next.profile.contactAddress.kana = incoming.profile.contactAddress.kana), incoming.profile.contactAddress.kana);
+    setIfNonEmpty(() => (next.profile.contactAddress.phone = incoming.profile.contactAddress.phone), incoming.profile.contactAddress.phone);
+    setIfNonEmpty(() => (next.profile.contactAddress.email = incoming.profile.contactAddress.email), incoming.profile.contactAddress.email);
+
+    // ===== arrays =====
+    const appendOrReplace = <T,>(cur: T[], inc: T[]) => (cur.length === 0 ? inc : [...cur, ...inc]);
+
+    if (incoming.education?.length) next.education = appendOrReplace(next.education, incoming.education);
+    if (incoming.workHistory?.length) next.workHistory = appendOrReplace(next.workHistory, incoming.workHistory);
+    if (incoming.certifications?.length) next.certifications = appendOrReplace(next.certifications, incoming.certifications);
+
+    // 重複排除：id が同一なら1つに
+    const dedupeById = <T extends { id?: string }>(arr: T[]) => {
+      const map = new Map<string, T>();
+      const noId: T[] = [];
+      for (const a of arr) {
+        if (a?.id) map.set(a.id, a);
+        else noId.push(a);
+      }
+      return [...map.values(), ...noId];
+    };
+    next.education = dedupeById(next.education);
+    next.workHistory = dedupeById(next.workHistory);
+    next.certifications = dedupeById(next.certifications);
+
+    // ===== text fields =====
+    setIfNonEmpty(() => (next.selfPromotion = incoming.selfPromotion), incoming.selfPromotion);
+    setIfNonEmpty(() => (next.motivation = incoming.motivation), incoming.motivation);
+    setIfNonEmpty(() => (next.requests = incoming.requests), incoming.requests);
+    setIfNonEmpty(() => (next.careerSummary = incoming.careerSummary), incoming.careerSummary);
+    setIfNonEmpty(() => (next.skillsSummary = incoming.skillsSummary), incoming.skillsSummary);
+    setIfNonEmpty(() => (next.careerPr = incoming.careerPr), incoming.careerPr);
+
+    return next;
+  };
+
+  const handleNormalize = async () => {
+    if (!rawPasteText.trim()) {
+      alert("テキストを貼り付けてください。");
+      return;
+    }
+
+    setIsNormalizing(true);
+    try {
+      const res = await fetch("/api/normalize/resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: rawPasteText }),
+      });
+
+      const result = await res.json();
+      setLastAiResult(result);
+
+      if (!result?.ok) {
+        alert("解析に失敗しました: " + (result?.error || "不明なエラー"));
+        return;
+      }
+
+      if (!result?.resumeData || !result.resumeData.profile) {
+        console.error("Invalid payload:", result);
+        alert("解析結果の形式が不正です（resumeDataがありません）。管理者にお問い合わせください。");
+        return;
+      }
+
+      setPendingResumeData(result.resumeData);
+      if (result.warnings && result.warnings.length > 0) {
+        setNormalizationWarnings(result.warnings);
+        setIsWarningModalOpen(true);
+      } else {
+        // 直接反映
+        const merged = mergeResumeData(useResumeStore.getState().resume, result.resumeData);
+        setAll(merged);
+        alert("AIがデータを解析し、フォームに反映しました！「基本情報」タブなどで内容を確認してください。");
+        setRawPasteText("");
+        setActiveTab("basic");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("通信エラーが発生しました。");
+    } finally {
+      setIsNormalizing(false);
+    }
+  };
+
+  const applyPendingData = () => {
+    if (pendingResumeData) {
+      const merged = mergeResumeData(useResumeStore.getState().resume, pendingResumeData);
+      setAll(merged);
+      setPendingResumeData(null);
+      setIsWarningModalOpen(false);
+      setRawPasteText("");
+      alert("データを反映しました。各タブの内容を確認してください。");
+      setActiveTab("basic");
     }
   };
 
@@ -1044,26 +908,28 @@ export default function ResumeBuilder() {
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 flex flex-col">
       <header className="bg-white shadow-sm p-4 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+        <div className="max-w-6xl mx-auto flex items-center justify-between relative">
           <div className="flex items-center gap-2">
             <FileText className="text-blue-600" />
             <h1 className="text-xl font-bold text-gray-800">AI履歴書ビルダー Pro</h1>
           </div>
+
           <div className="flex items-center gap-4">
-            <Link href="/import" className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium">
+            {/* DraftStatus absolute positioning to avoid layout shift */}
+            <div className="absolute right-0 -bottom-8">
+              <DraftStatus />
+            </div>
+
+            <button onClick={() => setActiveTab("ai")} className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium transition-colors">
               <Download size={16} />
-              応募データ取り込み
-            </Link>
-            <Link href="/pdf-import" className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium">
-              <Download size={16} />
-              PDFから取り込み
-            </Link>
+              応募データ取り込み (AI)
+            </button>
             <div className="text-sm text-gray-500">
               作成日: {resumeData.submissionDate}
             </div>
           </div>
         </div>
-      </header>
+      </header >
 
       <main className="flex-1 max-w-6xl mx-auto w-full p-4 md:p-8">
         {/* Tabs */}
@@ -1071,7 +937,7 @@ export default function ResumeBuilder() {
           {[
             { id: "basic", label: "基本情報", icon: User },
             { id: "history", label: "学歴・職歴", icon: Calendar },
-            { id: "ai", label: "AI作成", icon: Wand2 },
+            { id: "ai", label: "AI解析・作成", icon: Wand2 },
             { id: "career", label: "職務経歴書", icon: BookOpen },
             { id: "recommendation", label: "推薦文", icon: MessageSquare },
             { id: "preview", label: "プレビュー", icon: FileText },
@@ -1107,11 +973,11 @@ export default function ResumeBuilder() {
                     onChange={(e) => {
                       const val = e.target.value;
                       if (!val) {
-                        setResumeData(prev => ({ ...prev, submissionDate: "" }));
+                        setAll({ submissionDate: "" });
                         return;
                       }
                       const [y, m, d] = val.split('-');
-                      setResumeData(prev => ({ ...prev, submissionDate: `${y}年${parseInt(m)}月${parseInt(d)}日` }));
+                      setAll({ submissionDate: `${y}年${parseInt(m)}月${parseInt(d)}日` });
                     }}
                     className="w-full p-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
@@ -1232,7 +1098,7 @@ export default function ResumeBuilder() {
                             <img src={resumeData.photoUrl} alt="証明写真プレビュー" className="w-16 h-20 object-cover border border-gray-300 rounded" />
                             <button
                               type="button"
-                              onClick={() => setResumeData(prev => ({ ...prev, photoUrl: "" }))}
+                              onClick={() => setAll({ photoUrl: "" })}
                               className="text-red-600 hover:text-red-700 text-sm"
                             >
                               削除
@@ -1721,113 +1587,173 @@ export default function ResumeBuilder() {
           {
             activeTab === "ai" && (
               <div className="space-y-6 animate-in fade-in duration-300">
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-100 mb-6">
-                  <h2 className="text-lg font-bold text-blue-800 mb-2">AI自己PR・志望動機ジェネレーター</h2>
-                  <p className="text-sm text-blue-600">
-                    職種を選んでキーワードを入力するだけで、プロ並みの文章を自動生成します。
-                  </p>
-                </div>
+                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl p-6 border-2 border-indigo-200 shadow-sm mb-8 transition-all duration-300 hover:shadow-md">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 bg-indigo-600 rounded-lg text-white">
+                      <Search className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-800">
+                        応募者データの自動解析・一括反映
+                      </h3>
+                      <p className="text-sm text-slate-500">
+                        求人媒体（doda, マイナビ等）の応募者ページをコピーして貼り付けるだけで、全フォームへ自動反映します。
+                      </p>
+                    </div>
+                  </div>
 
-                <div className="mb-6">
-                  <label className="block text-sm font-bold text-gray-700 mb-2">希望職種を選択</label>
-                  <select
-                    className="w-full p-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500"
-                    value={selectedJob}
-                    onChange={(e) => setSelectedJob(e.target.value as JobType)}
-                  >
-                    <option value="">選択してください</option>
-                    {Object.values(JOB_TEMPLATES).map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {/* Left: Inputs */}
                   <div className="space-y-4">
-                    {selectedJob ? (
-                      <>
-                        <h3 className="font-semibold text-gray-700 border-b pb-2">情報の入力</h3>
-                        <input
-                          type="text"
-                          placeholder="【前職】(例: 接客、営業)"
-                          className="w-full p-3 border border-gray-300 rounded-lg"
-                          onChange={(e) => handleAiInputChange("previousJob", e.target.value)}
-                        />
-                        <input
-                          type="text"
-                          placeholder="【勉強内容】(例: Java, ITパスポート)"
-                          className="w-full p-3 border border-gray-300 rounded-lg"
-                          onChange={(e) => handleAiInputChange("studyContent", e.target.value)}
-                        />
-                        <input
-                          type="text"
-                          placeholder="【具体的なエピソード】(頑張ったこと)"
-                          className="w-full p-3 border border-gray-300 rounded-lg"
-                          onChange={(e) => handleAiInputChange("episode", e.target.value)}
-                        />
-                        <input
-                          type="text"
-                          placeholder="【成果】(例: 売上120%達成)"
-                          className="w-full p-3 border border-gray-300 rounded-lg"
-                          onChange={(e) => handleAiInputChange("result", e.target.value)}
-                        />
-                        <button
-                          onClick={handleGenerate}
-                          className="mt-4 w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition shadow-md flex items-center justify-center gap-2"
-                        >
-                          <Wand2 size={20} />
-                          文章を生成する
-                        </button>
-                      </>
-                    ) : (
-                      <div className="h-full flex flex-col items-center justify-center p-6 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center text-gray-500">
-                        <Wand2 size={48} className="mb-4 text-gray-300" />
-                        <p>AI生成機能を使用するには、<br />上で職種を選択してください。</p>
+                    <textarea
+                      className="w-full h-48 p-4 rounded-xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all resize-none text-sm bg-white"
+                      placeholder="媒体の応募情報をここに貼り付けてください..."
+                      value={rawPasteText}
+                      onChange={(e) => setRawPasteText(e.target.value)}
+                    />
+                    <button
+                      onClick={handleNormalize}
+                      disabled={isNormalizing || !rawPasteText.trim()}
+                      className="w-full flex items-center justify-center gap-2 py-4 px-6 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-200 active:scale-[0.98]"
+                    >
+                      {isNormalizing ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          AIが全データを解析・反映中...
+                        </>
+                      ) : (
+                        <>
+                          <Wand2 className="w-5 h-5" />
+                          AIで入力フォームに一括反映する
+                        </>
+                      )}
+                    </button>
+
+                    {/* Debug Info */}
+                    {lastAiResult && (
+                      <div className="mt-4 p-4 bg-slate-100 rounded-xl border border-slate-200">
+                        <details className="text-xs">
+                          <summary className="cursor-pointer font-bold text-slate-600 flex items-center gap-1">
+                            <Search size={14} /> [デバッグ] AI解析結果の詳細を表示
+                          </summary>
+                          <pre className="mt-2 p-2 bg-white rounded border overflow-auto max-h-60 text-[10px] leading-tight font-mono">
+                            {JSON.stringify(lastAiResult, null, 2)}
+                          </pre>
+                        </details>
                       </div>
                     )}
                   </div>
+                </div>
 
-                  {/* Right: Outputs */}
-                  <div className="space-y-6">
-                    <h3 className="font-semibold text-gray-700 border-b pb-2">生成結果 / 編集</h3>
+                <div className="border-t border-dashed border-gray-300 my-8"></div>
 
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <div className="flex justify-between items-center mb-2">
-                        <label className="text-sm font-bold text-gray-700">志望動機</label>
-                        <button
-                          onClick={() => copyToClipboard(resumeData.motivation)}
-                          className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800"
-                        >
-                          <Copy size={14} /> コピー
-                        </button>
-                      </div>
-                      <textarea
-                        className="w-full h-40 p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                        value={resumeData.motivation}
-                        onChange={(e) => handleMotivationChange(e.target.value)}
-                        placeholder="ここに生成された志望動機が表示されます"
-                      />
+                <div>
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6">
+                    <h3 className="text-md font-bold text-blue-800 mb-1">AI自己PR・志望動機ジェネレーター</h3>
+                    <p className="text-xs text-blue-600">
+                      職種を選んでキーワードを入力し、文章を自動生成します。
+                    </p>
+                  </div>
+
+                  <div className="mb-6">
+                    <label className="block text-sm font-bold text-gray-700 mb-2">希望職種を選択</label>
+                    <select
+                      className="w-full p-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500"
+                      value={selectedJob}
+                      onChange={(e) => setSelectedJob(e.target.value as JobType)}
+                    >
+                      <option value="">選択してください</option>
+                      {Object.values(JOB_TEMPLATES).map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Left: Inputs */}
+                    <div className="space-y-4">
+                      {selectedJob ? (
+                        <>
+                          <h3 className="font-semibold text-gray-700 border-b pb-2">情報の入力</h3>
+                          <input
+                            type="text"
+                            placeholder="【前職】(例: 接客、営業)"
+                            className="w-full p-3 border border-gray-300 rounded-lg"
+                            onChange={(e) => handleAiInputChange("previousJob", e.target.value)}
+                          />
+                          <input
+                            type="text"
+                            placeholder="【勉強内容】(例: Java, ITパスポート)"
+                            className="w-full p-3 border border-gray-300 rounded-lg"
+                            onChange={(e) => handleAiInputChange("studyContent", e.target.value)}
+                          />
+                          <input
+                            type="text"
+                            placeholder="【具体的なエピソード】(頑張ったこと)"
+                            className="w-full p-3 border border-gray-300 rounded-lg"
+                            onChange={(e) => handleAiInputChange("episode", e.target.value)}
+                          />
+                          <input
+                            type="text"
+                            placeholder="【成果】(例: 売上120%達成)"
+                            className="w-full p-3 border border-gray-300 rounded-lg"
+                            onChange={(e) => handleAiInputChange("result", e.target.value)}
+                          />
+                          <button
+                            onClick={handleGenerate}
+                            className="mt-4 w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition shadow-md flex items-center justify-center gap-2"
+                          >
+                            <Wand2 size={20} />
+                            文章を生成する
+                          </button>
+                        </>
+                      ) : (
+                        <div className="h-full flex flex-col items-center justify-center p-6 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center text-gray-500">
+                          <Wand2 size={48} className="mb-4 text-gray-300" />
+                          <p>AI生成機能を使用するには、<br />上で職種を選択してください。</p>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <div className="flex justify-between items-center mb-2">
-                        <label className="text-sm font-bold text-gray-700">自己PR</label>
-                        <button
-                          onClick={() => copyToClipboard(resumeData.selfPromotion)}
-                          className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800"
-                        >
-                          <Copy size={14} /> コピー
-                        </button>
+                    {/* Right: Outputs */}
+                    <div className="space-y-6">
+                      <h3 className="font-semibold text-gray-700 border-b pb-2">生成結果 / 編集</h3>
+
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="text-sm font-bold text-gray-700">志望動機</label>
+                          <button
+                            onClick={() => copyToClipboard(resumeData.motivation)}
+                            className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                          >
+                            <Copy size={14} /> コピー
+                          </button>
+                        </div>
+                        <textarea
+                          className="w-full h-40 p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                          value={resumeData.motivation}
+                          onChange={(e) => handleMotivationChange(e.target.value)}
+                          placeholder="ここに生成された志望動機が表示されます"
+                        />
                       </div>
-                      <textarea
-                        className="w-full h-40 p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                        value={resumeData.selfPromotion}
-                        onChange={(e) => setResumeData(prev => ({ ...prev, selfPromotion: e.target.value }))}
-                        placeholder="ここに生成された自己PRが表示されます"
-                      />
+
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="text-sm font-bold text-gray-700">自己PR</label>
+                          <button
+                            onClick={() => copyToClipboard(resumeData.selfPromotion)}
+                            className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                          >
+                            <Copy size={14} /> コピー
+                          </button>
+                        </div>
+                        <textarea
+                          className="w-full h-40 p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-white"
+                          value={resumeData.selfPromotion}
+                          onChange={(e) => handleSelfPromotionChange(e.target.value)}
+                          placeholder="ここに生成された自己PRが表示されます"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1870,7 +1796,7 @@ export default function ResumeBuilder() {
                     className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     value={resumeData.careerSummary || ""}
                     onChange={(e) =>
-                      setResumeData(prev => ({ ...prev, careerSummary: e.target.value }))
+                      setAll({ careerSummary: e.target.value })
                     }
                     placeholder="1〜5行でこれまでの経験の要約を入力します。空欄の場合は自動生成されます。"
                     rows={3}
@@ -1885,7 +1811,7 @@ export default function ResumeBuilder() {
                     className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     value={resumeData.skillsSummary || ""}
                     onChange={(e) =>
-                      setResumeData(prev => ({ ...prev, skillsSummary: e.target.value }))
+                      setAll({ skillsSummary: e.target.value })
                     }
                     placeholder="扱える技術・ツール・業務スキルなどを入力します。"
                     rows={3}
@@ -1900,7 +1826,7 @@ export default function ResumeBuilder() {
                     className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     value={resumeData.careerPr || ""}
                     onChange={(e) =>
-                      setResumeData(prev => ({ ...prev, careerPr: e.target.value }))
+                      setAll({ careerPr: e.target.value })
                     }
                     placeholder="職務経歴書用の自己PRを入力します。空欄の場合は履歴書の自己PRが使われます。"
                     rows={4}
@@ -2176,6 +2102,52 @@ export default function ResumeBuilder() {
         isOpen={isGraduationTableOpen}
         onClose={() => setIsGraduationTableOpen(false)}
       />
-    </div>
+
+      {/* Warnings Modal */}
+      {isWarningModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-6 bg-amber-50 border-b border-amber-100 flex items-center gap-3">
+              <div className="p-2 bg-amber-500 rounded-full text-white">
+                <Search className="w-5 h-5" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-800">解析結果の確認</h3>
+            </div>
+
+            <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+              <p className="text-slate-600 font-medium text-sm">以下の項目を自動的に修正・整形しました：</p>
+              <ul className="space-y-2">
+                {normalizationWarnings.map((warning, i) => (
+                  <li key={i} className="flex gap-2 text-sm text-amber-700 bg-amber-50/50 p-2 rounded-lg border border-amber-100">
+                    <span>・</span>
+                    <span>{warning}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                <p className="text-[10px] text-blue-700 leading-relaxed">
+                  ※AIの推測を含むため、反映後に必ず各項目（特に学歴・職歴の年月）が正しいかご確認ください。
+                </p>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-slate-100 flex gap-3">
+              <button
+                onClick={() => setIsWarningModalOpen(false)}
+                className="flex-1 py-3 px-4 rounded-xl border-2 border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-all text-sm"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={applyPendingData}
+                className="flex-1 py-3 px-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all text-sm"
+              >
+                フォームに反映する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div >
   );
 }
