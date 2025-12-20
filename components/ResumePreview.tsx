@@ -26,6 +26,15 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
     return monthA - monthB;
   });
 
+  const sortedWork = [...data.workHistory].sort((a, b) => {
+    const yearA = parseInt(a.startDate.year) || 0;
+    const monthA = parseInt(a.startDate.month) || 0;
+    const yearB = parseInt(b.startDate.year) || 0;
+    const monthB = parseInt(b.startDate.month) || 0;
+    if (yearA !== yearB) return yearA - yearB;
+    return monthA - monthB;
+  });
+
   const combinedHistory = [
     { type: "header", text: "学歴", year: "", month: "" },
     ...sortedEducation.flatMap(edu => [
@@ -43,25 +52,28 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
       },
     ]),
     { type: "header", text: "職歴", year: "", month: "" },
-    ...data.workHistory.flatMap(work => [
+    ...sortedWork.flatMap(work => [
       {
         type: "work",
         year: work.startDate.year,
         month: work.startDate.month,
         text: `${work.companyName} 入社`,
       },
-      ...(work.description ? [{
-        type: "work",
-        year: "",
-        month: "",
-        text: `　${work.description}`,
-      }] : []),
-      ...(work.isCurrent ? [] : [{
-        type: "work",
-        year: work.endDate.year,
-        month: work.endDate.month,
-        text: `${work.companyName} 退社`,
-      }]),
+      ...(work.isCurrent ? [
+        {
+          type: "work",
+          year: "",
+          month: "",
+          text: `　　現在に至る`,
+        }
+      ] : [
+        {
+          type: "work",
+          year: work.endDate.year,
+          month: work.endDate.month,
+          text: `${work.companyName} 退社`,
+        }
+      ]),
     ]),
     { type: "footer", text: "以上", year: "", month: "" },
   ];
@@ -240,7 +252,7 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
                   <span className="text-xs">{renderWithMinchoDigits(item?.month || "")}</span>
                 </div>
                 <div className={`flex-1 flex items-start px-2 pt-1 ${item?.type === "header" ? "justify-center font-bold" : ""} ${item?.type === "footer" ? "justify-end pr-4" : ""}`}>
-                  <span className="text-xs">{renderWithMinchoDigits(item?.text || "")}</span>
+                  <span className="text-xs whitespace-pre-wrap break-all leading-tight">{renderWithMinchoDigits(item?.text || "")}</span>
                 </div>
               </div>
             );
@@ -281,7 +293,7 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
                   <span className="text-xs">{renderWithMinchoDigits(item?.month || "")}</span>
                 </div>
                 <div className={`flex-1 flex items-start px-2 pt-1 ${item?.type === "header" ? "justify-center font-bold" : ""} ${item?.type === "footer" ? "justify-end pr-4" : ""}`}>
-                  <span className="text-xs">{renderWithMinchoDigits(item?.text || "")}</span>
+                  <span className="text-xs whitespace-pre-wrap break-all leading-tight">{renderWithMinchoDigits(item?.text || "")}</span>
                 </div>
               </div>
             );
@@ -305,7 +317,15 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
 
           {/* データ行 */}
           {[...Array(6)].map((_, i) => {
-            const cert = data.certifications?.[i];
+            const cert = [...(data.certifications || [])]
+              .sort((a, b) => {
+                const yearA = parseInt(a.date.year) || 0;
+                const monthA = parseInt(a.date.month) || 0;
+                const yearB = parseInt(b.date.year) || 0;
+                const monthB = parseInt(b.date.month) || 0;
+                if (yearA !== yearB) return yearA - yearB;
+                return monthA - monthB;
+              })[i];
             return (
               <div key={i} className={`h-[7.5mm] flex ${i < 5 ? 'border-b border-black' : ''}`}>
                 <div className="w-[22mm] border-r border-black flex items-start justify-center pt-1">
@@ -315,7 +335,7 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
                   <span className="text-xs">{renderWithMinchoDigits(cert?.date.month || "")}</span>
                 </div>
                 <div className="flex-1 flex items-start px-2 pt-1">
-                  <span className="text-xs">{renderWithMinchoDigits(cert?.name || "")}</span>
+                  <span className="text-xs whitespace-pre-wrap break-all leading-tight">{renderWithMinchoDigits(cert?.name || "")}</span>
                 </div>
               </div>
             );

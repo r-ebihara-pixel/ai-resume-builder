@@ -11,14 +11,14 @@ export const CareerSheetPreview = React.forwardRef<HTMLDivElement, Props>(
     ({ formData, id }, ref) => {
         const data = formData;
 
-        // Work history (sorted by start date, newest first)
+        // Work history (sorted by start date, oldest first)
         const workHistory = [...(data.workHistory ?? [])].sort((a, b) => {
             const aYear = parseInt(a.startDate?.year || "0");
             const bYear = parseInt(b.startDate?.year || "0");
-            if (aYear !== bYear) return bYear - aYear;
+            if (aYear !== bYear) return aYear - bYear;
             const aMonth = parseInt(a.startDate?.month || "0");
             const bMonth = parseInt(b.startDate?.month || "0");
-            return bMonth - aMonth;
+            return aMonth - bMonth;
         });
 
         return (
@@ -202,7 +202,14 @@ export const CareerSheetPreview = React.forwardRef<HTMLDivElement, Props>(
                                 資格・免許
                             </h2>
                             <ul className="text-xs leading-relaxed space-y-1">
-                                {data.certifications.map((cert, i) => {
+                                {[...(data.certifications || [])].sort((a, b) => {
+                                    const aYear = parseInt(a.date?.year || "0");
+                                    const bYear = parseInt(b.date?.year || "0");
+                                    if (aYear !== bYear) return aYear - bYear;
+                                    const aMonth = parseInt(a.date?.month || "0");
+                                    const bMonth = parseInt(b.date?.month || "0");
+                                    return aMonth - bMonth;
+                                }).map((cert, i) => {
                                     const certYear = cert.date?.year || "";
                                     const certMonth = cert.date?.month || "";
                                     const certDate = certYear && certMonth
