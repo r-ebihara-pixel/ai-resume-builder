@@ -11,14 +11,21 @@ export const CareerSheetPreview = React.forwardRef<HTMLDivElement, Props>(
     ({ formData, id }, ref) => {
         const data = formData;
 
+        // 日付をソート用の数値に変換（全角対応）
+        const parseDateToNumber = (ym: any) => {
+            if (!ym) return 0;
+            const yStr = String(ym.year || "").replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+            const mStr = String(ym.month || "").replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+            const y = parseInt(yStr) || 0;
+            const m = parseInt(mStr) || 0;
+            return y * 100 + m;
+        };
+
         // Work history (sorted by start date, oldest first)
         const workHistory = [...(data.workHistory ?? [])].sort((a, b) => {
-            const aYear = parseInt(a.startDate?.year || "0");
-            const bYear = parseInt(b.startDate?.year || "0");
-            if (aYear !== bYear) return aYear - bYear;
-            const aMonth = parseInt(a.startDate?.month || "0");
-            const bMonth = parseInt(b.startDate?.month || "0");
-            return aMonth - bMonth;
+            const valA = parseDateToNumber(a.startDate) || parseDateToNumber(a.endDate);
+            const valB = parseDateToNumber(b.startDate) || parseDateToNumber(b.endDate);
+            return valA - valB;
         });
 
         return (

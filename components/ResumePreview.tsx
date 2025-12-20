@@ -16,23 +16,27 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
     ? calculateAge(`${data.profile.birthday.year}-${data.profile.birthday.month.padStart(2, '0')}-${data.profile.birthday.day.padStart(2, '0')}`)
     : "";
 
+  // 日付をソート用の数値に変換（全角対応）
+  const parseDateToNumber = (ym: any) => {
+    if (!ym) return 0;
+    const yStr = String(ym.year || "").replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+    const mStr = String(ym.month || "").replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+    const y = parseInt(yStr) || 0;
+    const m = parseInt(mStr) || 0;
+    return y * 100 + m;
+  };
+
   // 学歴・職歴を統合
   const sortedEducation = [...data.education].sort((a, b) => {
-    const yearA = parseInt(a.startDate.year) || 0;
-    const monthA = parseInt(a.startDate.month) || 0;
-    const yearB = parseInt(b.startDate.year) || 0;
-    const monthB = parseInt(b.startDate.month) || 0;
-    if (yearA !== yearB) return yearA - yearB;
-    return monthA - monthB;
+    const valA = parseDateToNumber(a.startDate) || parseDateToNumber(a.endDate);
+    const valB = parseDateToNumber(b.startDate) || parseDateToNumber(b.endDate);
+    return valA - valB;
   });
 
   const sortedWork = [...data.workHistory].sort((a, b) => {
-    const yearA = parseInt(a.startDate.year) || 0;
-    const monthA = parseInt(a.startDate.month) || 0;
-    const yearB = parseInt(b.startDate.year) || 0;
-    const monthB = parseInt(b.startDate.month) || 0;
-    if (yearA !== yearB) return yearA - yearB;
-    return monthA - monthB;
+    const valA = parseDateToNumber(a.startDate) || parseDateToNumber(a.endDate);
+    const valB = parseDateToNumber(b.startDate) || parseDateToNumber(b.endDate);
+    return valA - valB;
   });
 
   const combinedHistory = [
