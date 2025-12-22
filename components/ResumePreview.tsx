@@ -143,7 +143,7 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
               <div className="w-[15mm] border-r border-black px-1 flex items-center justify-center h-full">
                 <span className="text-xs">性別</span>
               </div>
-              <div className="w-[15mm] flex items-center justify-center">
+              <div className="w-[15mm] border-r border-black flex items-center justify-center h-full">
                 <span className="text-xs">
                   {data.profile.gender === "male" ? "男" : data.profile.gender === "female" ? "女" : ""}
                 </span>
@@ -212,7 +212,7 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
                 <div className="w-[13mm] border-r border-black flex items-start px-1 pt-1">
                   <span className="text-xs">電話</span>
                 </div>
-                <div className="flex-1 flex items-center justify-center px-1">
+                <div className="flex-1 flex items-center justify-center px-1 border-r border-black">
                   <span className="text-xs">{data.profile.contactAddress?.phone || data.profile.phone}</span>
                 </div>
               </div>
@@ -221,7 +221,7 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
                 <div className="w-[13mm] border-r border-black flex items-start px-1 pt-1">
                   <span className="text-xs">E-mail</span>
                 </div>
-                <div className="flex-1 flex items-center justify-center px-1 text-[10px] break-all">
+                <div className="flex-1 flex items-center justify-center px-1 text-[10px] break-all border-r border-black">
                   <span className="text-xs">{data.profile.contactAddress?.email || data.profile.email}</span>
                 </div>
               </div>
@@ -239,7 +239,7 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
             <div className="w-[12mm] border-r border-black flex items-center justify-center">
               <span className="text-xs">月</span>
             </div>
-            <div className="flex-1 flex items-center justify-center px-4">
+            <div className="flex-1 flex items-center justify-center px-4 border-r border-black">
               <span className="text-xs tracking-wide">学　歴　・　職　歴　（ 各別にまとめて書く ）</span>
             </div>
           </div>
@@ -248,14 +248,14 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
           {[...Array(13)].map((_, i) => {
             const item = page1History[i];
             return (
-              <div key={i} className={`h-[7.5mm] flex ${i < 12 ? 'border-b border-black' : ''}`}>
+              <div key={i} className="h-[7.5mm] flex border-b border-black">
                 <div className="w-[22mm] border-r border-black flex items-start justify-center pt-1">
                   <span className="text-xs">{renderWithMinchoDigits(item?.year || "")}</span>
                 </div>
                 <div className="w-[12mm] border-r border-black flex items-start justify-center pt-1">
                   <span className="text-xs">{renderWithMinchoDigits(item?.month || "")}</span>
                 </div>
-                <div className={`flex-1 flex items-start px-2 pt-1 ${item?.type === "header" ? "justify-center font-bold" : ""} ${item?.type === "footer" ? "justify-end pr-4" : ""}`}>
+                <div className={`flex-1 flex items-start px-2 pt-1 border-r border-black ${item?.type === "header" ? "justify-center font-bold" : ""} ${item?.type === "footer" ? "justify-end pr-4" : ""}`}>
                   <span className="text-xs whitespace-pre-wrap break-all leading-tight">{renderWithMinchoDigits(item?.text || "")}</span>
                 </div>
               </div>
@@ -280,7 +280,7 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
             <div className="w-[12mm] border-r border-black flex items-center justify-center">
               <span className="text-xs">月</span>
             </div>
-            <div className="flex-1 flex items-center justify-center px-4">
+            <div className="flex-1 flex items-center justify-center px-4 border-r border-black">
               <span className="text-xs tracking-wide">学　歴　・　職　歴　（ 各別にまとめて書く ）</span>
             </div>
           </div>
@@ -289,14 +289,14 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
           {[...Array(10)].map((_, i) => {
             const item = page2History[i];
             return (
-              <div key={i} className={`h-[7.5mm] flex ${i < 9 ? 'border-b border-black' : ''}`}>
+              <div key={i} className="h-[7.5mm] flex border-b border-black">
                 <div className="w-[22mm] border-r border-black flex items-start justify-center pt-1">
                   <span className="text-xs">{renderWithMinchoDigits(item?.year || "")}</span>
                 </div>
                 <div className="w-[12mm] border-r border-black flex items-start justify-center pt-1">
                   <span className="text-xs">{renderWithMinchoDigits(item?.month || "")}</span>
                 </div>
-                <div className={`flex-1 flex items-start px-2 pt-1 ${item?.type === "header" ? "justify-center font-bold" : ""} ${item?.type === "footer" ? "justify-end pr-4" : ""}`}>
+                <div className={`flex-1 flex items-start px-2 pt-1 border-r border-black ${item?.type === "header" ? "justify-center font-bold" : ""} ${item?.type === "footer" ? "justify-end pr-4" : ""}`}>
                   <span className="text-xs whitespace-pre-wrap break-all leading-tight">{renderWithMinchoDigits(item?.text || "")}</span>
                 </div>
               </div>
@@ -314,7 +314,7 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
             <div className="w-[12mm] border-r border-black flex items-center justify-center">
               <span className="text-xs">月</span>
             </div>
-            <div className="flex-1 flex items-center justify-center px-4">
+            <div className="flex-1 flex items-center justify-center px-4 border-r border-black">
               <span className="text-xs">免　許　・　資　格</span>
             </div>
           </div>
@@ -331,14 +331,14 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
                 return monthA - monthB;
               })[i];
             return (
-              <div key={i} className={`h-[7.5mm] flex ${i < 5 ? 'border-b border-black' : ''}`}>
+              <div key={i} className="h-[7.5mm] flex border-b border-black">
                 <div className="w-[22mm] border-r border-black flex items-start justify-center pt-1">
                   <span className="text-xs">{renderWithMinchoDigits(cert?.date.year || "")}</span>
                 </div>
                 <div className="w-[12mm] border-r border-black flex items-start justify-center pt-1">
                   <span className="text-xs">{renderWithMinchoDigits(cert?.date.month || "")}</span>
                 </div>
-                <div className="flex-1 flex items-start px-2 pt-1">
+                <div className="flex-1 flex items-start px-2 pt-1 border-r border-black">
                   <span className="text-xs whitespace-pre-wrap break-all leading-tight">{renderWithMinchoDigits(cert?.name || "")}</span>
                 </div>
               </div>
