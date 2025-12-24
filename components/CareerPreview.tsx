@@ -33,6 +33,17 @@ export const CareerPreview = React.forwardRef<HTMLDivElement, Props>(({ formData
 
   return (
     <div ref={ref} id={id} className="resume-page w-[210mm] min-h-[297mm] bg-white text-black font-serif text-sm p-[15mm] box-border relative print:shadow-none mx-auto career-document">
+      <style>{`
+        @page career { margin: 15mm; }
+        .career-document { page: career; }
+        @media print {
+          .career-document {
+            padding: 0 !important;
+            width: auto !important;
+            min-height: auto !important;
+          }
+        }
+      `}</style>
       {/* Title */}
       <div className="text-center text-xl font-bold" style={{ letterSpacing: '0.5em', marginBottom: '10mm' }}>
         職 務 経 歴 書
@@ -189,6 +200,11 @@ export const CareerPreview = React.forwardRef<HTMLDivElement, Props>(({ formData
             </div>
           )}
         </div>
+      </div>
+
+      {/* Footer: Standard End Mark */}
+      <div className="text-right" style={{ marginTop: '10mm', marginBottom: '10mm' }}>
+        <span className="font-bold">以上</span>
       </div>
     </div>
   );

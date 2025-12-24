@@ -111,7 +111,7 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
         {/* 基本情報エリア */}
         <div className="flex gap-[3mm] mb-4">
           {/* 左側：氏名・生年月日エリア */}
-          <div className="flex-1 border-[1.8px] border-black">
+          <div className="flex-1 border-2 border-black">
             {/* ふりがな行 (8mm) */}
             <div className="h-[8mm] border-b border-black flex items-center">
               <div className="w-[20mm] border-r border-black px-1 flex items-center h-full">
@@ -172,7 +172,7 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
         </div>
 
         {/* 住所・連絡先 */}
-        <div className="border-[1.8px] border-black mb-4">
+        <div className="border-2 border-black mb-4">
 
           {/* 現住所エリア全体 (32mm) */}
           <div className="flex border-b border-black h-[32mm]">
@@ -183,8 +183,8 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
                 <div className="w-[20mm] border-r border-black flex items-center px-1 pb-1">
                   <span className="text-xs">ふりがな</span>
                 </div>
-                <div className="flex-1 flex items-center px-2 pb-1">
-                  <span className="text-xs">{data.profile.address.kana}</span>
+                <div className="flex-1 flex items-center px-2 pb-1 overflow-hidden">
+                  <span className={`block w-full ${data.profile.address.kana.length > 35 ? "text-[9px] leading-[9px]" : data.profile.address.kana.length > 25 ? "text-[10px] leading-[10px]" : "text-xs leading-none"}`}>{data.profile.address.kana}</span>
                 </div>
               </div>
               {/* 住所行 (24mm) */}
@@ -230,9 +230,9 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
         </div>
 
         {/* 学歴・職歴テーブル */}
-        <div className="border-[1.8px] border-black">
+        <div className="border-2 border-black">
           {/* ヘッダー */}
-          <div className="h-[8mm] border-b-[1.8px] border-black flex bg-white">
+          <div className="h-[8mm] border-b border-black flex bg-white">
             <div className="w-[22mm] border-r border-black flex items-center justify-center">
               <span className="text-xs">年</span>
             </div>
@@ -271,9 +271,9 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
 
 
         {/* 学歴・職歴（続き） */}
-        <div className="border-[1.8px] border-black mb-4">
+        <div className="border-2 border-black mb-4">
           {/* ヘッダー */}
-          <div className="h-[8mm] border-b-[1.8px] border-black flex bg-white">
+          <div className="h-[8mm] border-b border-black flex bg-white">
             <div className="w-[22mm] border-r border-black flex items-center justify-center">
               <span className="text-xs">年</span>
             </div>
@@ -305,9 +305,9 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
         </div>
 
         {/* 免許・資格 */}
-        <div className="border-[1.8px] border-black mb-4">
+        <div className="border-2 border-black mb-4">
           {/* ヘッダー */}
-          <div className="h-[8mm] border-b-[1.8px] border-black flex bg-white">
+          <div className="h-[8mm] border-b border-black flex bg-white">
             <div className="w-[22mm] border-r border-black flex items-center justify-center">
               <span className="text-xs">年</span>
             </div>
@@ -347,7 +347,7 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
         </div>
 
         {/* 志望の動機、特技、自己PR、アピールポイントなど */}
-        <div className="border-[1.8px] border-black mb-4 h-[70mm]">
+        <div className="border-2 border-black mb-4 h-[70mm]">
           <div className="border-b border-black px-2 py-1 text-xs">
             志望の動機、特技、自己PR、アピールポイントなど
           </div>
@@ -361,7 +361,7 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
         </div>
 
         {/* 本人希望記入欄 */}
-        <div className="border-[1.8px] border-black h-[40mm]">
+        <div className="border-2 border-black h-[40mm]">
           <div className="border-b border-black px-2 py-1 text-xs">
             本人希望記入欄（特に給料、職種、勤務時間、勤務地、その他についての希望などがあれば記入）
           </div>
