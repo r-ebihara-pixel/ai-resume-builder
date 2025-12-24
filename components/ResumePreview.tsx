@@ -101,7 +101,7 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
       `}</style>
 
       {/* ========== 1ページ目 ========== */}
-      <div id="resume-page-1" className="resume-page w-[210mm] min-h-[297mm] bg-white text-black font-serif text-sm p-[15mm] box-border relative print:shadow-none mx-auto">
+      <div id="resume-page-1" className="resume-page w-[210mm] min-h-[297mm] bg-white text-black font-serif text-sm p-[10mm] box-border relative print:shadow-none mx-auto">
         {/* ヘッダー */}
         <div className="flex justify-between items-start mb-4">
           <h1 className="text-3xl font-bold tracking-wider">履　歴　書</h1>
@@ -267,7 +267,7 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
       <div className="page-break h-8 bg-gray-100 print:hidden"></div>
 
       {/* ========== 2ページ目 ========== */}
-      <div id="resume-page-2" className="resume-page w-[210mm] min-h-[297mm] bg-white text-black font-serif text-sm p-[15mm] box-border relative print:shadow-none mx-auto">
+      <div id="resume-page-2" className="resume-page w-[210mm] min-h-[297mm] bg-white text-black font-serif text-sm p-[10mm] box-border relative print:shadow-none mx-auto">
 
 
         {/* 学歴・職歴（続き） */}
