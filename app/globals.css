@@ -431,4 +431,30 @@ body {
   .no-print-scroll {
     overflow: visible !important;
   }
+
+  /* 職務経歴書プレビュー用 */
+  #career-preview-visible,
+  #career-preview-visible * {
+    visibility: visible !important;
+  }
+
+  #career-preview-visible {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 210mm;
+  }
+
+  /* 推薦文プレビュー用 */
+  #recommendation-preview,
+  #recommendation-preview * {
+    visibility: visible !important;
+  }
+
+  #recommendation-preview {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 210mm;
+  }
 }

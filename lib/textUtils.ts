@@ -85,3 +85,14 @@ export function toHalfWidth(str: string): string {
         return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
     });
 }
+
+/**
+ * ひらがなをカタカナに変換
+ */
+export function toKatakana(str: string): string {
+    if (!str) return "";
+    return str.replace(/[\u3041-\u3096]/g, function (match) {
+        const chr = match.charCodeAt(0) + 0x60;
+        return String.fromCharCode(chr);
+    });
+}

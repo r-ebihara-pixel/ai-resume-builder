@@ -2,6 +2,7 @@ import { jsPDF } from "jspdf";
 import { ResumeData } from "@/types/resume";
 import { calculateAge } from "@/lib/dateUtils";
 import { NotoSansJPRegular } from "@/lib/fonts/NotoSansJP";
+import { toKatakana } from "@/lib/textUtils";
 
 // 定数定義（Pythonコードから移植）
 const MARGIN = 15; // mm
@@ -345,9 +346,9 @@ export function generateResumePDF(data: ResumeData): jsPDF {
     const NAME_H = BLOCK_H - FURI_H;
 
     drawLine(doc, MARGIN, topY - FURI_H, MARGIN + NAME_W, topY - FURI_H, LINE_THIN);
-    drawTextInBox(doc, MARGIN, topY - FURI_H, 20, FURI_H, "ふりがな", { size: 9 });
+    drawTextInBox(doc, MARGIN, topY - FURI_H, 20, FURI_H, "フリガナ", { size: 9 });
     drawTextInBox(doc, MARGIN + 20, topY - FURI_H, NAME_W - 20, FURI_H,
-        `${data.profile.lastNameKana}　${data.profile.firstNameKana}`, { size: 9 });
+        `${toKatakana(data.profile.lastNameKana)}　${toKatakana(data.profile.firstNameKana)}`, { size: 9 });
 
     drawTextInBox(doc, MARGIN, bottomY, 20, NAME_H, "氏　　名", { size: 10.5, valign: "top" });
     drawTextInBox(doc, MARGIN + 20, bottomY, NAME_W - 20, NAME_H,
@@ -398,9 +399,9 @@ export function generateResumePDF(data: ResumeData): jsPDF {
     // ふりがな行
     drawLine(doc, MARGIN, addrTopY - H_FURI, MARGIN + addrLeftW, addrTopY - H_FURI, LINE_THIN);
     drawLine(doc, MARGIN + W_LABEL, addrTopY, MARGIN + W_LABEL, addrTopY - H_FURI, LINE_THIN);
-    drawTextInBox(doc, MARGIN, addrTopY - H_FURI, W_LABEL, H_FURI, "ふりがな", { size: 9, valign: "bottom" });
+    drawTextInBox(doc, MARGIN, addrTopY - H_FURI, W_LABEL, H_FURI, "フリガナ", { size: 9, valign: "bottom" });
     drawTextInBox(doc, MARGIN + W_LABEL, addrTopY - H_FURI, addrLeftW - W_LABEL, H_FURI,
-        data.profile.address.kana, { size: 9, valign: "bottom" });
+        toKatakana(data.profile.address.kana), { size: 9, valign: "bottom" });
 
     // 住所行
     drawLine(doc, MARGIN + W_LABEL, addrTopY - H_FURI, MARGIN + W_LABEL, addrBottomY, LINE_THIN);
@@ -447,9 +448,9 @@ export function generateResumePDF(data: ResumeData): jsPDF {
     // ふりがな行
     drawLine(doc, MARGIN, contactTopY - H_FURI, MARGIN + addrLeftW, contactTopY - H_FURI, LINE_THIN);
     drawLine(doc, MARGIN + W_LABEL, contactTopY, MARGIN + W_LABEL, contactTopY - H_FURI, LINE_THIN);
-    drawTextInBox(doc, MARGIN, contactTopY - H_FURI, W_LABEL, H_FURI, "ふりがな", { size: 9, valign: "bottom" });
+    drawTextInBox(doc, MARGIN, contactTopY - H_FURI, W_LABEL, H_FURI, "フリガナ", { size: 9, valign: "bottom" });
     drawTextInBox(doc, MARGIN + W_LABEL, contactTopY - H_FURI, addrLeftW - W_LABEL, H_FURI,
-        data.profile.contactAddress?.kana || "", { size: 9, valign: "bottom" });
+        toKatakana(data.profile.contactAddress?.kana || ""), { size: 9, valign: "bottom" });
 
     // 住所行
     drawLine(doc, MARGIN + W_LABEL, contactTopY - H_FURI, MARGIN + W_LABEL, contactBottomY, LINE_THIN);

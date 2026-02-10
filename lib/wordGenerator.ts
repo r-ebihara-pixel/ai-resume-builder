@@ -17,6 +17,7 @@ import {
 } from "docx";
 import { ResumeData } from "@/types/resume";
 import { calculateAge } from "@/lib/dateUtils";
+import { toKatakana } from "@/lib/textUtils";
 
 const BORDER_THICK = { style: BorderStyle.SINGLE, size: 12, color: "000000" }; // 1.5pt approx
 const BORDER_THIN = { style: BorderStyle.SINGLE, size: 2, color: "000000" };   // 0.5pt approx
@@ -109,8 +110,8 @@ export async function downloadResumeDocx(resumeData: ResumeData) {
       new TableRow({
         height: { value: ROW_HEIGHT_FURIGANA, rule: HeightRule.EXACT },
         children: [
-          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ふりがな", font: FONT_FAMILY, size: 16 })] })], width: { size: 10, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER }),
-          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `${profile.lastNameKana} ${profile.firstNameKana}`, font: FONT_FAMILY, size: 20 })] })], width: { size: 60, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "フリガナ", font: FONT_FAMILY, size: 16 })] })], width: { size: 10, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `${toKatakana(profile.lastNameKana)} ${toKatakana(profile.firstNameKana)}`, font: FONT_FAMILY, size: 20 })] })], width: { size: 60, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER }),
           new TableCell({
             children: [
               new Paragraph({
@@ -184,8 +185,8 @@ export async function downloadResumeDocx(resumeData: ResumeData) {
       new TableRow({
         height: { value: ROW_HEIGHT_FURIGANA, rule: HeightRule.EXACT },
         children: [
-          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ふりがな", font: FONT_FAMILY, size: 16 })] })], width: { size: 10, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER }),
-          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: profile.address.kana, font: FONT_FAMILY, size: 18 })] })], width: { size: 60, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "フリガナ", font: FONT_FAMILY, size: 16 })] })], width: { size: 10, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: toKatakana(profile.address.kana), font: FONT_FAMILY, size: 18 })] })], width: { size: 60, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER }),
           new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "電話", font: FONT_FAMILY, size: 16 })] })], width: { size: 10, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER }),
           new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: profile.phone, font: FONT_FAMILY, size: 20 })] })], width: { size: 20, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER }),
         ],
@@ -204,8 +205,8 @@ export async function downloadResumeDocx(resumeData: ResumeData) {
       new TableRow({
         height: { value: ROW_HEIGHT_FURIGANA, rule: HeightRule.EXACT },
         children: [
-          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "ふりがな", font: FONT_FAMILY, size: 16 })] })], width: { size: 10, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER }),
-          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: profile.contactAddress.kana, font: FONT_FAMILY, size: 18 })] })], width: { size: 60, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "フリガナ", font: FONT_FAMILY, size: 16 })] })], width: { size: 10, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: toKatakana(profile.contactAddress.kana), font: FONT_FAMILY, size: 18 })] })], width: { size: 60, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER }),
           new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "電話", font: FONT_FAMILY, size: 16 })] })], width: { size: 10, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER }),
           new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: profile.contactAddress.phone, font: FONT_FAMILY, size: 20 })] })], width: { size: 20, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER }),
         ],

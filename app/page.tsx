@@ -8,7 +8,7 @@ import { ResumePreview } from "@/components/ResumePreview";
 import { CareerSheetPreview } from "@/components/CareerSheetPreview";
 import GraduationTableModal from "@/components/GraduationTableModal";
 import { ResumeData } from "@/types/resume";
-import { normalizeText, limitTextLength, MOTIVATION_MAX_LENGTH, REQUESTS_MAX_LENGTH, toHalfWidth } from "@/lib/textUtils";
+import { normalizeText, limitTextLength, MOTIVATION_MAX_LENGTH, REQUESTS_MAX_LENGTH, toHalfWidth, toKatakana } from "@/lib/textUtils";
 import { RecommendationPreview } from "@/components/RecommendationPreview";
 import { useResumeStore } from "@/lib/store/resumeStore";
 import { DraftStatus } from "@/components/DraftStatus";
@@ -617,12 +617,12 @@ export default function ResumeBuilder() {
         // 現住所を更新
         setByPath("profile.address.prefecture", address.prefecture);
         setByPath("profile.address.city", address.city + address.town);
-        setByPath("profile.address.kana", address.prefectureKana + address.cityKana + address.townKana);
+        setByPath("profile.address.kana", toKatakana(address.prefectureKana + address.cityKana + address.townKana));
       } else {
         // 連絡先住所を更新
         setByPath("profile.contactAddress.prefecture", address.prefecture);
         setByPath("profile.contactAddress.city", address.city + address.town);
-        setByPath("profile.contactAddress.kana", address.prefectureKana + address.cityKana + address.townKana);
+        setByPath("profile.contactAddress.kana", toKatakana(address.prefectureKana + address.cityKana + address.townKana));
       }
     } catch (error) {
       console.error("Address search failed", error);
@@ -781,122 +781,20 @@ export default function ResumeBuilder() {
     }
   };
 
-  const handlePrintCareerPdf = async () => {
-    if (typeof window === "undefined" || !printRef.current) return;
+  const handlePrintCareerPdf = () => {
+    if (typeof window === "undefined") return;
 
-    try {
-      const html2canvas = (await import("html2canvas")).default;
-      const jsPDF = (await import("jspdf")).jsPDF;
-
-      // Get the career preview element
-      const careerElement = printRef.current.querySelector("#career-preview-visible") as HTMLElement;
-      if (!careerElement) return;
-
-      // Generate canvas from the career preview
-      const canvas = await html2canvas(careerElement, {
-        useCORS: true,
-        logging: false,
-      });
-
-      // Calculate dimensions for A4 PDF
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-
-      let position = 0;
-      let heightLeft = imgHeight;
-
-      // Add first page
-      pdf.addImage(
-        canvas.toDataURL("image/png"),
-        "PNG",
-        0,
-        position,
-        imgWidth,
-        imgHeight
-      );
-      heightLeft -= pageHeight;
-
-      // Add additional pages if content exceeds one page
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(
-          canvas.toDataURL("image/png"),
-          "PNG",
-          0,
-          position,
-          imgWidth,
-          imgHeight
-        );
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save("career-sheet.pdf");
-    } catch (error) {
-      console.error("PDF generation failed:", error);
-      alert("PDF生成に失敗しました");
-    }
+    // Set preview mode to career and trigger print
+    setPreviewMode("career");
+    setTimeout(() => window.print(), 100);
   };
 
-  const handleDownloadRecommendationPdf = async () => {
-    try {
-      const html2canvas = (await import("html2canvas")).default;
-      const jsPDF = (await import("jspdf")).jsPDF;
+  const handleDownloadRecommendationPdf = () => {
+    if (typeof window === "undefined") return;
 
-      // ① ターゲット要素の ID を推薦文用に変更
-      const element = document.getElementById("recommendation-preview");
-      if (!element) {
-        console.error("Recommendation preview element not found");
-        return;
-      }
-
-      // ② html2canvas 設定は career-sheet と完全同じで OK
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-      });
-
-      if (canvas.width === 0 || canvas.height === 0) {
-        console.error("Canvas width/height is 0. Is the recommendation preview visible?");
-        return;
-      }
-
-      const imgData = canvas.toDataURL("image/jpeg", 1.0);
-      const pdf = new jsPDF("p", "mm", "a4");
-
-      const pageWidth = 210;
-      const pageHeight = 297;
-
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        pdf.addPage();
-        position = heightLeft - imgHeight;
-        pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      // ③ ファイル名だけ推薦文用に変更
-      pdf.save("recommendation.pdf");
-    } catch (error) {
-      console.error("PDF generation failed:", error);
-      alert("PDF生成に失敗しました");
-    }
+    // Set preview mode to recommendation and trigger print
+    setPreviewMode("recommendation");
+    setTimeout(() => window.print(), 100);
   };
 
   return (
@@ -1202,7 +1100,7 @@ export default function ResumeBuilder() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      住所フリガナ <span className="text-red-500 text-xs ml-1">必須</span>
+                      住所フリガナ (カタカナ) <span className="text-red-500 text-xs ml-1">必須</span>
                     </label>
                     <input type="text" value={resumeData.profile.address.kana} onChange={(e) => handleAddressChange("kana", e.target.value)} className="w-full p-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="チヨダクチヨダ1-1" />
                   </div>
@@ -1320,7 +1218,7 @@ export default function ResumeBuilder() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      住所フリガナ
+                      住所フリガナ (カタカナ)
                     </label>
                     <input type="text" value={resumeData.profile.contactAddress.kana} onChange={(e) => handleContactAddressChange("kana", e.target.value)} className="w-full p-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="チヨダクチヨダ1-1" />
                   </div>

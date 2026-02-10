@@ -2,6 +2,7 @@ import React from "react";
 import { ResumeData } from "@/types/resume";
 import { calculateAge } from "@/lib/dateUtils";
 import { renderWithMinchoDigits } from "@/lib/utils/text";
+import { toKatakana } from "@/lib/textUtils";
 
 interface Props {
   formData: ResumeData;
@@ -115,10 +116,10 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
             {/* ふりがな行 (8mm) */}
             <div className="h-[8mm] border-b border-black flex items-center">
               <div className="w-[20mm] border-r border-black px-1 flex items-center h-full">
-                <span className="text-xs">ふりがな</span>
+                <span className="text-xs">フリガナ</span>
               </div>
               <div className="flex-1 px-2 flex items-center">
-                <span className="text-xs">{data.profile.lastNameKana}　{data.profile.firstNameKana}</span>
+                <span className="text-xs">{toKatakana(data.profile.lastNameKana)}　{toKatakana(data.profile.firstNameKana)}</span>
               </div>
             </div>
             {/* 氏名行 (22mm) */}
@@ -181,10 +182,10 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
               {/* ふりがな行 (8mm) */}
               <div className="h-[8mm] flex border-b border-black">
                 <div className="w-[20mm] border-r border-black flex items-center px-1 pb-1">
-                  <span className="text-xs">ふりがな</span>
+                  <span className="text-xs">フリガナ</span>
                 </div>
                 <div className="flex-1 flex items-center px-2 pb-1 overflow-hidden">
-                  <span className={`block w-full ${data.profile.address.kana.length > 35 ? "text-[9px] leading-[9px]" : data.profile.address.kana.length > 25 ? "text-[10px] leading-[10px]" : "text-xs leading-none"}`}>{data.profile.address.kana}</span>
+                  <span className={`block w-full ${data.profile.address.kana.length > 35 ? "text-[9px] leading-[9px]" : data.profile.address.kana.length > 25 ? "text-[10px] leading-[10px]" : "text-xs leading-none"}`}>{toKatakana(data.profile.address.kana)}</span>
                 </div>
               </div>
               {/* 住所行 (24mm) */}
