@@ -5,11 +5,37 @@ import { renderWithMinchoDigits } from "@/lib/utils/text";
 interface Props {
     formData: ResumeData;
     id?: string;
+    rawText?: string;
 }
 
 export const CareerSheetPreview = React.forwardRef<HTMLDivElement, Props>(
-    ({ formData, id }, ref) => {
+    ({ formData, id, rawText }, ref) => {
         const data = formData;
+
+        if (rawText) {
+            return (
+                <div
+                    ref={ref}
+                    id={id}
+                    className="w-full bg-gray-100 p-8 overflow-y-auto print:p-0 print:bg-white print:overflow-visible"
+                >
+                    <style>{`
+          @page { size: A4; margin: 0; }
+          @media print {
+            body { -webkit-print-color-adjust: exact; }
+            .page-break { page-break-before: always; }
+            .resume-page { font-family: "MS Mincho", "MS PMincho", "Hiragino Mincho ProN", serif !important; }
+          }
+          .resume-page {
+            font-family: "MS Mincho", "MS PMincho", "Hiragino Mincho ProN", serif !important;
+          }
+        `}</style>
+                    <div className="resume-page w-[210mm] min-h-[297mm] bg-white text-black font-serif text-sm p-[15mm] box-border relative print:shadow-none mx-auto whitespace-pre-wrap leading-relaxed">
+                        {renderWithMinchoDigits(rawText)}
+                    </div>
+                </div>
+            );
+        }
 
         // 日付をソート用の数値に変換（全角対応）
         const parseDateToNumber = (ym: any) => {

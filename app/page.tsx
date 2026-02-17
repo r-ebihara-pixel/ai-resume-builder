@@ -142,9 +142,25 @@ export default function ResumeBuilder() {
   const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
   const [pendingResumeData, setPendingResumeData] = useState<ResumeData | null>(null);
   const [lastAiResult, setLastAiResult] = useState<any>(null);
+  const [editedRecommendationText, setEditedRecommendationText] = useState("");
+  const [isRecommendationManual, setIsRecommendationManual] = useState(false);
+  const [editedCareerText, setEditedCareerText] = useState("");
+  const [isCareerManual, setIsCareerManual] = useState(false);
 
 
   // Hydration check
+  useEffect(() => {
+    if (hasHydrated && !isRecommendationManual) {
+      setEditedRecommendationText(buildRecommendationText(resumeData, recommendationInput));
+    }
+  }, [resumeData, recommendationInput, hasHydrated, isRecommendationManual]);
+
+  useEffect(() => {
+    if (hasHydrated && !isCareerManual) {
+      setEditedCareerText(buildCareerText(resumeData));
+    }
+  }, [resumeData, hasHydrated, isCareerManual]);
+
   if (!hasHydrated) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>;
 
   // --- Handlers ---
@@ -1662,7 +1678,7 @@ export default function ResumeBuilder() {
                 </h2>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => copyToClipboard(buildCareerText(resumeData))}
+                    onClick={() => copyToClipboard(editedCareerText)}
                     className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
                   >
                     <Copy size={16} />
@@ -1734,9 +1750,26 @@ export default function ResumeBuilder() {
 
               <textarea
                 className="w-full h-[600px] p-4 border border-gray-300 rounded-lg font-mono text-sm leading-relaxed whitespace-pre-wrap"
-                readOnly
-                value={buildCareerText(resumeData)}
+                value={editedCareerText}
+                onChange={(e) => {
+                  setEditedCareerText(e.target.value);
+                  setIsCareerManual(true);
+                }}
               />
+              <div className="flex justify-end mt-2">
+                <button
+                  onClick={() => {
+                    if (confirm("編集内容を破棄してテンプレートから再生成しますか？")) {
+                      setIsCareerManual(false);
+                      setEditedCareerText(buildCareerText(resumeData));
+                    }
+                  }}
+                  className="text-xs text-gray-500 hover:text-blue-600 flex items-center gap-1"
+                >
+                  <Wand2 size={14} />
+                  テンプレートから再生成（編集内容をリセット）
+                </button>
+              </div>
             </div>
           )}
 
@@ -1867,9 +1900,7 @@ export default function ResumeBuilder() {
                   <div className="flex gap-2">
                     <button
                       onClick={() =>
-                        copyToClipboard(
-                          buildRecommendationText(resumeData, recommendationInput)
-                        )
+                        copyToClipboard(editedRecommendationText)
                       }
                       className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
                     >
@@ -1881,9 +1912,26 @@ export default function ResumeBuilder() {
 
                 <textarea
                   className="w-full h-[500px] p-4 border border-gray-300 rounded-lg font-mono text-sm leading-relaxed whitespace-pre-wrap"
-                  readOnly
-                  value={buildRecommendationText(resumeData, recommendationInput)}
+                  value={editedRecommendationText}
+                  onChange={(e) => {
+                    setEditedRecommendationText(e.target.value);
+                    setIsRecommendationManual(true);
+                  }}
                 />
+                <div className="flex justify-end mt-2">
+                  <button
+                    onClick={() => {
+                      if (confirm("編集内容を破棄してテンプレートから再生成しますか？")) {
+                        setIsRecommendationManual(false);
+                        setEditedRecommendationText(buildRecommendationText(resumeData, recommendationInput));
+                      }
+                    }}
+                    className="text-xs text-gray-500 hover:text-blue-600 flex items-center gap-1"
+                  >
+                    <Wand2 size={14} />
+                    テンプレートから再生成（編集内容をリセット）
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -1953,21 +2001,21 @@ export default function ResumeBuilder() {
                     {previewMode === "resume" ? (
                       <ResumePreview formData={resumeData} id="resume-preview" />
                     ) : previewMode === "career" ? (
-                      <CareerSheetPreview formData={resumeData} id="career-preview-visible" />
+                      <CareerSheetPreview formData={resumeData} id="career-preview-visible" rawText={editedCareerText} />
                     ) : (
                       <RecommendationPreview
                         id="recommendation-preview"
                         ref={recommendationPreviewRef}
                         formData={resumeData}
                         recommendationInput={recommendationInput}
-                        recommendationText={buildRecommendationText(resumeData, recommendationInput)}
+                        recommendationText={editedRecommendationText}
                       />
                     )}
 
                     {/* Hidden Career Preview for PDF export (when in resume mode) */}
                     {previewMode === "resume" && (
                       <div style={{ display: "none" }}>
-                        <CareerSheetPreview formData={resumeData} id="career-preview" />
+                        <CareerSheetPreview formData={resumeData} id="career-preview" rawText={editedCareerText} />
                       </div>
                     )}
                     {/* Hidden Recommendation Preview for PDF export (when not in recommendation mode) */}
@@ -1977,7 +2025,7 @@ export default function ResumeBuilder() {
                           id="recommendation-preview-hidden"
                           formData={resumeData}
                           recommendationInput={recommendationInput}
-                          recommendationText={buildRecommendationText(resumeData, recommendationInput)}
+                          recommendationText={editedRecommendationText}
                         />
                       </div>
                     )}
