@@ -256,7 +256,7 @@ export function generateResumePDF(data: ResumeData): jsPDF {
                 type: "education",
                 year: edu.endDate.year,
                 month: edu.endDate.month,
-                text: `${edu.schoolName} ${edu.department} ${edu.status === "graduated" ? "卒業" : edu.status === "expected" ? "卒業見込" : "中退"}`,
+                text: `${edu.schoolName} ${edu.department} ${edu.status === "graduated" ? "卒業" : edu.status === "expected" ? "卒業見込" : "中途退学"}`,
             },
         ]),
         { type: "header", text: "職歴", year: "", month: "" },

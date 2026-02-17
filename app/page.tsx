@@ -1303,7 +1303,7 @@ export default function ResumeBuilder() {
                                 <option value="graduated">卒業</option>
                                 <option value="expected">卒業見込</option>
                                 <option value="enrolled">在学中</option>
-                                <option value="dropout">中退</option>
+                                <option value="dropout">中途退学</option>
                               </select>
                             </div>
                             <input type="text" value={edu.department} onChange={(e) => handleEducationChange(index, "department", e.target.value)} className="w-full p-2 border rounded" placeholder="学部・学科・コース" />

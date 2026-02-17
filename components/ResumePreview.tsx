@@ -53,7 +53,7 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
         type: "education",
         year: edu.endDate.year,
         month: edu.endDate.month,
-        text: `${edu.schoolName} ${edu.department} ${edu.status === "graduated" ? "卒業" : edu.status === "expected" ? "卒業見込" : edu.status === "enrolled" ? "在学中" : "中退"}`,
+        text: `${edu.schoolName} ${edu.department} ${edu.status === "graduated" ? "卒業" : edu.status === "expected" ? "卒業見込" : edu.status === "enrolled" ? "在学中" : "中途退学"}`,
       },
     ]),
     { type: "header", text: "職歴", year: "", month: "" },
