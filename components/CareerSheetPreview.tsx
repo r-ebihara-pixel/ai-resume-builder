@@ -24,10 +24,6 @@ export const CareerSheetPreview = React.forwardRef<HTMLDivElement, Props>(
           @media print {
             body { -webkit-print-color-adjust: exact; }
             .page-break { page-break-before: always; }
-            .resume-page { font-family: "MS Mincho", "MS PMincho", "Hiragino Mincho ProN", serif !important; }
-          }
-          .resume-page {
-            font-family: "MS Mincho", "MS PMincho", "Hiragino Mincho ProN", serif !important;
           }
         `}</style>
                     <div className="resume-page w-[210mm] min-h-[297mm] bg-white text-black font-serif text-sm p-[15mm] box-border relative print:shadow-none mx-auto whitespace-pre-wrap leading-relaxed">
@@ -37,21 +33,14 @@ export const CareerSheetPreview = React.forwardRef<HTMLDivElement, Props>(
             );
         }
 
-        // 日付をソート用の数値に変換（全角対応）
-        const parseDateToNumber = (ym: any) => {
-            if (!ym) return 0;
-            const yStr = String(ym.year || "").replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
-            const mStr = String(ym.month || "").replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
-            const y = parseInt(yStr) || 0;
-            const m = parseInt(mStr) || 0;
-            return y * 100 + m;
-        };
-
-        // Work history (sorted by start date, oldest first)
+        // Work history (sorted by start date, newest first)
         const workHistory = [...(data.workHistory ?? [])].sort((a, b) => {
-            const valA = parseDateToNumber(a.startDate) || parseDateToNumber(a.endDate);
-            const valB = parseDateToNumber(b.startDate) || parseDateToNumber(b.endDate);
-            return valA - valB;
+            const aYear = parseInt(a.startDate?.year || "0");
+            const bYear = parseInt(b.startDate?.year || "0");
+            if (aYear !== bYear) return bYear - aYear;
+            const aMonth = parseInt(a.startDate?.month || "0");
+            const bMonth = parseInt(b.startDate?.month || "0");
+            return bMonth - aMonth;
         });
 
         return (
@@ -66,29 +55,25 @@ export const CareerSheetPreview = React.forwardRef<HTMLDivElement, Props>(
           @media print {
             body { -webkit-print-color-adjust: exact; }
             .page-break { page-break-before: always; }
-            .resume-page { font-family: "MS Mincho", "MS PMincho", "Hiragino Mincho ProN", serif !important; }
-          }
-          .resume-page {
-            font-family: "MS Mincho", "MS PMincho", "Hiragino Mincho ProN", serif !important;
           }
         `}</style>
 
                 <div className="resume-page w-[210mm] min-h-[297mm] bg-white text-black font-serif text-sm p-[15mm] box-border relative print:shadow-none mx-auto">
-                    {/* Title (Centered) */}
-                    <div className="text-center mb-4">
-                        <h1 className="text-3xl font-bold tracking-[0.5em]">職務経歴書</h1>
-                    </div>
-
-                    {/* Header: Date and Name (Right-aligned below title) */}
-                    <div className="flex flex-col items-end mb-8">
-                        <div className="text-xs mb-1">
+                    {/* Title */}
+                    <div className="flex justify-between items-start mb-6">
+                        <h1 className="text-3xl font-bold tracking-widest">職　務　経　歴　書</h1>
+                        <div className="text-xs mt-2">
                             {renderWithMinchoDigits(data.submissionDate ? data.submissionDate + " 現在" : "")}
                         </div>
-                        <div className="flex items-baseline">
-                            <span className="text-xs mr-4">氏名</span>
-                            <span className="text-xl font-bold">
+                    </div>
+
+                    {/* Name */}
+                    <div className="flex justify-end mb-6">
+                        <div className="text-right">
+                            <div className="text-xs mb-1">氏名</div>
+                            <div className="text-xl font-bold">
                                 {data.profile.lastName} {data.profile.firstName}
-                            </span>
+                            </div>
                         </div>
                     </div>
 
@@ -235,14 +220,7 @@ export const CareerSheetPreview = React.forwardRef<HTMLDivElement, Props>(
                                 資格・免許
                             </h2>
                             <ul className="text-xs leading-relaxed space-y-1">
-                                {[...(data.certifications || [])].sort((a, b) => {
-                                    const aYear = parseInt(a.date?.year || "0");
-                                    const bYear = parseInt(b.date?.year || "0");
-                                    if (aYear !== bYear) return aYear - bYear;
-                                    const aMonth = parseInt(a.date?.month || "0");
-                                    const bMonth = parseInt(b.date?.month || "0");
-                                    return aMonth - bMonth;
-                                }).map((cert, i) => {
+                                {data.certifications.map((cert, i) => {
                                     const certYear = cert.date?.year || "";
                                     const certMonth = cert.date?.month || "";
                                     const certDate = certYear && certMonth
