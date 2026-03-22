@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { JOB_TEMPLATES, JobType } from "@/lib/data/jobTemplates";
 import { generateText, UserInput } from "@/lib/generator";
-import { Calendar, User, FileText, Wand2, Download, Copy, Loader2, Plus, Trash2, Search, BookOpen, MessageSquare } from "lucide-react";
+import { Calendar, User, FileText, Wand2, Download, Copy, Loader2, Plus, Trash2, Search, BookOpen, MessageSquare, Upload, RefreshCw } from "lucide-react";
 import { ResumePreview } from "@/components/ResumePreview";
 import { CareerSheetPreview } from "@/components/CareerSheetPreview";
 import GraduationTableModal from "@/components/GraduationTableModal";
@@ -142,6 +142,16 @@ export default function ResumeBuilder() {
   const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
   const [pendingResumeData, setPendingResumeData] = useState<ResumeData | null>(null);
   const [lastAiResult, setLastAiResult] = useState<any>(null);
+
+  // PDF Upload State
+  const [isPdfExtracting, setIsPdfExtracting] = useState(false);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+
+  // Improve Mode State
+  const [aiMode, setAiMode] = useState<"generate" | "improve">("generate");
+  const [improveInputMotivation, setImproveInputMotivation] = useState("");
+  const [improveInputSelfPr, setImproveInputSelfPr] = useState("");
+  const [isImproving, setIsImproving] = useState(false);
   const [editedRecommendationText, setEditedRecommendationText] = useState("");
   const [isRecommendationManual, setIsRecommendationManual] = useState(false);
   const [editedCareerText, setEditedCareerText] = useState("");
@@ -160,6 +170,17 @@ export default function ResumeBuilder() {
       setEditedCareerText(buildCareerText(resumeData));
     }
   }, [resumeData, hasHydrated, isCareerManual]);
+
+  // Feature 3: Auto-set 記入日 to today if empty
+  useEffect(() => {
+    if (hasHydrated && !resumeData.submissionDate) {
+      const today = new Date();
+      const y = today.getFullYear();
+      const m = today.getMonth() + 1;
+      const d = today.getDate();
+      setAll({ submissionDate: `${y}年${m}月${d}日` });
+    }
+  }, [hasHydrated]);
 
   if (!hasHydrated) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>;
 
@@ -304,6 +325,66 @@ export default function ResumeBuilder() {
     alert("文章を生成し、履歴書データに反映しました！");
   };
 
+
+  // Feature 1: PDF Upload handler
+  const handlePdfUpload = async (file: File) => {
+    setIsPdfExtracting(true);
+    try {
+      const pdfjs = await import("pdfjs-dist");
+      pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+      let text = "";
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map((item: any) => item.str).join(" ") + "\n";
+      }
+      if (!text.trim()) {
+        alert("PDFからテキストを抽出できませんでした。スキャンPDFや画像PDFは対応していません。");
+        return;
+      }
+      setRawPasteText(text);
+    } catch (e) {
+      console.error(e);
+      alert("PDFの読み込みに失敗しました。");
+    } finally {
+      setIsPdfExtracting(false);
+    }
+  };
+
+  // Feature 2: Improve handler
+  const handleImprove = async () => {
+    if (!improveInputMotivation.trim() && !improveInputSelfPr.trim()) {
+      alert("改善する文章を入力してください。");
+      return;
+    }
+    setIsImproving(true);
+    try {
+      const res = await fetch("/api/improve/text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ motivation: improveInputMotivation, selfPr: improveInputSelfPr }),
+      });
+      const result = await res.json();
+      if (!result.ok) {
+        alert("改善に失敗しました: " + (result.error || "不明なエラー"));
+        return;
+      }
+      if (result.motivation) {
+        setByPath("motivation", limitTextLength(normalizeText(result.motivation), MOTIVATION_MAX_LENGTH));
+      }
+      if (result.selfPr) {
+        setByPath("selfPromotion", normalizeText(result.selfPr));
+      }
+      alert("文章を改善し、フォームに反映しました！");
+    } catch (e) {
+      console.error(e);
+      alert("通信エラーが発生しました。");
+    } finally {
+      setIsImproving(false);
+    }
+  };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -1517,6 +1598,31 @@ export default function ResumeBuilder() {
                       value={rawPasteText}
                       onChange={(e) => setRawPasteText(e.target.value)}
                     />
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => pdfInputRef.current?.click()}
+                        disabled={isPdfExtracting}
+                        className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-indigo-300 text-indigo-700 font-medium rounded-xl hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm"
+                      >
+                        {isPdfExtracting ? (
+                          <><Loader2 className="w-4 h-4 animate-spin" />PDFを読み込み中...</>
+                        ) : (
+                          <><Upload className="w-4 h-4" />PDFをアップロード</>
+                        )}
+                      </button>
+                      <span className="text-xs text-slate-400">または上のテキストエリアに直接貼り付け</span>
+                      <input
+                        ref={pdfInputRef}
+                        type="file"
+                        accept=".pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handlePdfUpload(file);
+                          e.target.value = "";
+                        }}
+                      />
+                    </div>
                     <button
                       onClick={handleNormalize}
                       disabled={isNormalizing || !rawPasteText.trim()}
@@ -1555,71 +1661,124 @@ export default function ResumeBuilder() {
 
                 <div>
                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6">
-                    <h3 className="text-md font-bold text-blue-800 mb-1">AI自己PR・志望動機ジェネレーター</h3>
+                    <div className="flex items-center justify-between mb-1 gap-4 flex-wrap">
+                      <h3 className="text-md font-bold text-blue-800">AI自己PR・志望動機ジェネレーター</h3>
+                      <div className="flex rounded-lg overflow-hidden border border-blue-300 text-sm font-medium">
+                        <button
+                          onClick={() => setAiMode("generate")}
+                          className={`px-3 py-1 transition-colors ${aiMode === "generate" ? "bg-blue-600 text-white" : "bg-white text-blue-700 hover:bg-blue-50"}`}
+                        >
+                          <span className="flex items-center gap-1"><Wand2 size={13} />ゼロから生成</span>
+                        </button>
+                        <button
+                          onClick={() => setAiMode("improve")}
+                          className={`px-3 py-1 transition-colors ${aiMode === "improve" ? "bg-blue-600 text-white" : "bg-white text-blue-700 hover:bg-blue-50"}`}
+                        >
+                          <span className="flex items-center gap-1"><RefreshCw size={13} />改善モード</span>
+                        </button>
+                      </div>
+                    </div>
                     <p className="text-xs text-blue-600">
-                      職種を選んでキーワードを入力し、文章を自動生成します。
+                      {aiMode === "generate" ? "職種を選んでキーワードを入力し、文章を自動生成します。" : "候補者の既存文章を貼り付けて、AIがより良く書き直します。"}
                     </p>
                   </div>
 
-                  <div className="mb-6">
-                    <label className="block text-sm font-bold text-gray-700 mb-2">希望職種を選択</label>
-                    <select
-                      className="w-full p-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500"
-                      value={selectedJob}
-                      onChange={(e) => setSelectedJob(e.target.value as JobType)}
-                    >
-                      <option value="">選択してください</option>
-                      {Object.values(JOB_TEMPLATES).map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {aiMode === "generate" && (
+                    <div className="mb-6">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">希望職種を選択</label>
+                      <select
+                        className="w-full p-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500"
+                        value={selectedJob}
+                        onChange={(e) => setSelectedJob(e.target.value as JobType)}
+                      >
+                        <option value="">選択してください</option>
+                        {Object.values(JOB_TEMPLATES).map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Left: Inputs */}
                     <div className="space-y-4">
-                      {selectedJob ? (
+                      {aiMode === "generate" ? (
+                        selectedJob ? (
+                          <>
+                            <h3 className="font-semibold text-gray-700 border-b pb-2">情報の入力</h3>
+                            <input
+                              type="text"
+                              placeholder="【前職】(例: 接客、営業)"
+                              className="w-full p-3 border border-gray-300 rounded-lg"
+                              onChange={(e) => handleAiInputChange("previousJob", e.target.value)}
+                            />
+                            <input
+                              type="text"
+                              placeholder="【勉強内容】(例: Java, ITパスポート)"
+                              className="w-full p-3 border border-gray-300 rounded-lg"
+                              onChange={(e) => handleAiInputChange("studyContent", e.target.value)}
+                            />
+                            <input
+                              type="text"
+                              placeholder="【具体的なエピソード】(頑張ったこと)"
+                              className="w-full p-3 border border-gray-300 rounded-lg"
+                              onChange={(e) => handleAiInputChange("episode", e.target.value)}
+                            />
+                            <input
+                              type="text"
+                              placeholder="【成果】(例: 売上120%達成)"
+                              className="w-full p-3 border border-gray-300 rounded-lg"
+                              onChange={(e) => handleAiInputChange("result", e.target.value)}
+                            />
+                            <button
+                              onClick={handleGenerate}
+                              className="mt-4 w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition shadow-md flex items-center justify-center gap-2"
+                            >
+                              <Wand2 size={20} />
+                              文章を生成する
+                            </button>
+                          </>
+                        ) : (
+                          <div className="h-full flex flex-col items-center justify-center p-6 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center text-gray-500">
+                            <Wand2 size={48} className="mb-4 text-gray-300" />
+                            <p>AI生成機能を使用するには、<br />上で職種を選択してください。</p>
+                          </div>
+                        )
+                      ) : (
                         <>
-                          <h3 className="font-semibold text-gray-700 border-b pb-2">情報の入力</h3>
-                          <input
-                            type="text"
-                            placeholder="【前職】(例: 接客、営業)"
-                            className="w-full p-3 border border-gray-300 rounded-lg"
-                            onChange={(e) => handleAiInputChange("previousJob", e.target.value)}
-                          />
-                          <input
-                            type="text"
-                            placeholder="【勉強内容】(例: Java, ITパスポート)"
-                            className="w-full p-3 border border-gray-300 rounded-lg"
-                            onChange={(e) => handleAiInputChange("studyContent", e.target.value)}
-                          />
-                          <input
-                            type="text"
-                            placeholder="【具体的なエピソード】(頑張ったこと)"
-                            className="w-full p-3 border border-gray-300 rounded-lg"
-                            onChange={(e) => handleAiInputChange("episode", e.target.value)}
-                          />
-                          <input
-                            type="text"
-                            placeholder="【成果】(例: 売上120%達成)"
-                            className="w-full p-3 border border-gray-300 rounded-lg"
-                            onChange={(e) => handleAiInputChange("result", e.target.value)}
-                          />
+                          <h3 className="font-semibold text-gray-700 border-b pb-2">既存の文章を貼り付け</h3>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">志望動機（既存の文章）</label>
+                            <textarea
+                              className="w-full h-32 p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 resize-none"
+                              placeholder="候補者の志望動機を貼り付けてください"
+                              value={improveInputMotivation}
+                              onChange={(e) => setImproveInputMotivation(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">自己PR（既存の文章）</label>
+                            <textarea
+                              className="w-full h-32 p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 resize-none"
+                              placeholder="候補者の自己PRを貼り付けてください"
+                              value={improveInputSelfPr}
+                              onChange={(e) => setImproveInputSelfPr(e.target.value)}
+                            />
+                          </div>
                           <button
-                            onClick={handleGenerate}
-                            className="mt-4 w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition shadow-md flex items-center justify-center gap-2"
+                            onClick={handleImprove}
+                            disabled={isImproving || (!improveInputMotivation.trim() && !improveInputSelfPr.trim())}
+                            className="mt-2 w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 disabled:bg-slate-300 transition shadow-md flex items-center justify-center gap-2"
                           >
-                            <Wand2 size={20} />
-                            文章を生成する
+                            {isImproving ? (
+                              <><Loader2 className="w-5 h-5 animate-spin" />AIが改善中...</>
+                            ) : (
+                              <><RefreshCw size={20} />AIでより良く書き直す</>
+                            )}
                           </button>
                         </>
-                      ) : (
-                        <div className="h-full flex flex-col items-center justify-center p-6 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center text-gray-500">
-                          <Wand2 size={48} className="mb-4 text-gray-300" />
-                          <p>AI生成機能を使用するには、<br />上で職種を選択してください。</p>
-                        </div>
                       )}
                     </div>
 
