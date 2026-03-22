@@ -30,8 +30,22 @@ export const CareerSheetPreview = React.forwardRef<HTMLDivElement, Props>(
             font-family: "MS Mincho", "MS PMincho", "Hiragino Mincho ProN", serif !important;
           }
         `}</style>
-                    <div className="resume-page w-[210mm] min-h-[297mm] bg-white text-black font-serif text-sm p-[15mm] box-border relative print:shadow-none mx-auto whitespace-pre-wrap leading-relaxed">
-                        {renderWithMinchoDigits(rawText)}
+                    <div className="resume-page w-[210mm] min-h-[297mm] bg-white text-black font-serif text-sm p-[15mm] box-border relative print:shadow-none mx-auto leading-relaxed">
+                        {(() => {
+                            const lines = rawText.split("\n");
+                            const firstLine = lines[0].trim();
+                            const rest = lines.slice(1).join("\n");
+                            return (
+                                <>
+                                    <h1 className="text-3xl font-bold tracking-widest mb-4">
+                                        {renderWithMinchoDigits(firstLine)}
+                                    </h1>
+                                    <div className="whitespace-pre-wrap">
+                                        {renderWithMinchoDigits(rest)}
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </div>
                 </div>
             );
