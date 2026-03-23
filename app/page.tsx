@@ -193,16 +193,19 @@ export default function ResumeBuilder() {
 
     const params = new URLSearchParams(window.location.search);
     const encoded = params.get("data");
+    console.log("[NeoAct] hasHydrated:", hasHydrated, "encoded exists:", !!encoded, "encoded length:", encoded?.length);
     if (!encoded) return;
 
     neoactImportDone.current = true;
 
     try {
       // TextEncoder方式 (UTF-8バイナリ→Base64) のデコード
+      // URLSearchParams.get() は自動的にURLデコードする
       const binStr = atob(encoded);
       const bytes = Uint8Array.from(binStr, c => c.charCodeAt(0));
       const jsonStr = new TextDecoder().decode(bytes);
       const json = JSON.parse(jsonStr);
+      console.log("[NeoAct] Parsed candidate data:", Object.keys(json));
 
       // YYYY-MM → { year, month } (no zero-padding on month)
       const parseYm = (ym: string | null | undefined) => {
