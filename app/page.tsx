@@ -198,7 +198,11 @@ export default function ResumeBuilder() {
     neoactImportDone.current = true;
 
     try {
-      const json = JSON.parse(decodeURIComponent(atob(encoded)));
+      // TextEncoder方式 (UTF-8バイナリ→Base64) のデコード
+      const binStr = atob(encoded);
+      const bytes = Uint8Array.from(binStr, c => c.charCodeAt(0));
+      const jsonStr = new TextDecoder().decode(bytes);
+      const json = JSON.parse(jsonStr);
 
       // YYYY-MM → { year, month } (no zero-padding on month)
       const parseYm = (ym: string | null | undefined) => {
