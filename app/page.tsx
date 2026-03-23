@@ -147,6 +147,9 @@ export default function ResumeBuilder() {
   const [isPdfExtracting, setIsPdfExtracting] = useState(false);
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
+  // NeoAct Import Toast
+  const [neoactToast, setNeoactToast] = useState<string | null>(null);
+
   // Improve Mode State
   const [aiMode, setAiMode] = useState<"generate" | "improve">("generate");
   const [improveInputMotivation, setImproveInputMotivation] = useState("");
@@ -179,6 +182,157 @@ export default function ResumeBuilder() {
       const m = today.getMonth() + 1;
       const d = today.getDate();
       setAll({ submissionDate: `${y}年${m}月${d}日` });
+    }
+  }, [hasHydrated]);
+
+  // NeoAct連携: URLパラメータから候補者データを取り込み
+  const neoactImportDone = useRef(false);
+  useEffect(() => {
+    if (!hasHydrated || neoactImportDone.current) return;
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const encoded = params.get("data");
+    if (!encoded) return;
+
+    neoactImportDone.current = true;
+
+    try {
+      const json = JSON.parse(decodeURIComponent(atob(encoded)));
+
+      // YYYY-MM → { year, month } (no zero-padding on month)
+      const parseYm = (ym: string | null | undefined) => {
+        if (!ym) return { year: "", month: "" };
+        const parts = ym.split("-");
+        return { year: parts[0] || "", month: parts[1] ? String(parseInt(parts[1])) : "" };
+      };
+
+      // birthDate (ISO / YYYY-MM-DD) → { year, month, day } (no zero-padding)
+      const parseBirth = (d: string | null | undefined) => {
+        if (!d) return { year: "", month: "", day: "" };
+        const iso = d.includes("T") ? d.split("T")[0] : d;
+        const [y, m, dd] = iso.split("-");
+        return { year: y || "", month: m ? String(parseInt(m)) : "", day: dd ? String(parseInt(dd)) : "" };
+      };
+
+      // gender mapping
+      const mapGender = (g: string | null | undefined): "male" | "female" | "" => {
+        if (!g) return "";
+        const lower = g.toLowerCase();
+        if (lower === "male") return "male";
+        if (lower === "female") return "female";
+        return "";
+      };
+
+      // education status mapping
+      const mapEduStatus = (s: string | null | undefined): "graduated" | "dropout" | "expected" | "enrolled" | "" => {
+        if (!s) return "";
+        if (s.includes("卒") || s.includes("修了")) return "graduated";
+        if (s.includes("中退") || s.includes("退学")) return "dropout";
+        if (s.includes("見込")) return "expected";
+        if (s.includes("在学")) return "enrolled";
+        return "graduated";
+      };
+
+      const incoming: ResumeData = {
+        profile: {
+          lastName: json.lastName || "",
+          firstName: json.firstName || "",
+          lastNameKana: json.lastNameKana || "",
+          firstNameKana: json.firstNameKana || "",
+          birthday: parseBirth(json.birthDate),
+          gender: mapGender(json.gender),
+          phone: json.phone || "",
+          email: json.email || "",
+          address: {
+            postalCode: json.postalCode || "",
+            prefecture: json.address1 || "",
+            city: "",
+            block: json.address2 || "",
+            building: "",
+            kana: "",
+          },
+          contactAddress: { postalCode: "", prefecture: "", city: "", block: "", building: "", kana: "", phone: "", email: "" },
+        },
+        education: (json.educations || []).map((e: any) => ({
+          id: crypto.randomUUID(),
+          schoolType: "",
+          schoolName: e.schoolName || "",
+          department: e.facultyDept || "",
+          startDate: parseYm(e.startYm),
+          endDate: parseYm(e.endYm),
+          status: mapEduStatus(e.status),
+        })),
+        workHistory: (json.works || []).map((w: any) => ({
+          id: crypto.randomUUID(),
+          companyName: w.companyName || "",
+          startDate: parseYm(w.startYm),
+          endDate: parseYm(w.endYm),
+          isCurrent: !w.endYm,
+          description: w.roleTitle || "",
+          department: "",
+          position: w.roleTitle || "",
+          employmentType: w.employmentType || "",
+          businessDescription: "",
+          companyCapital: "",
+          employeeCount: "",
+          responsibilities: w.tasks || "",
+          achievements: w.achievements || "",
+          environment: w.techStack || "",
+        })),
+        certifications: (json.certs || []).map((c: any) => ({
+          id: crypto.randomUUID(),
+          date: parseYm(c.acquiredYm),
+          name: c.name || "",
+        })),
+        selfPromotion: json.selfPr || "",
+        motivation: json.motivation || "",
+        requests: [
+          json.desiredRole ? `希望職種: ${json.desiredRole}` : "",
+          json.desiredCondition || "",
+          json.desiredSalary ? `希望年収: ${json.desiredSalary}万円` : "",
+        ].filter(Boolean).join("\n"),
+        submissionDate: resumeData.submissionDate,
+      };
+
+      const merged = mergeResumeData(useResumeStore.getState().resume, incoming);
+      setAll(merged);
+
+      // URLからパラメータを消す
+      window.history.replaceState({}, "", window.location.pathname);
+
+      // 志望動機・自己PRがある場合、改善モードをセット
+      if (json.selfPr || json.motivation) {
+        setAiMode("improve");
+        if (json.motivation) setImproveInputMotivation(json.motivation);
+        if (json.selfPr) setImproveInputSelfPr(json.selfPr);
+        setActiveTab("ai");
+
+        // 改善APIを自動実行
+        setTimeout(async () => {
+          try {
+            const res = await fetch("/api/improve/text", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ motivation: json.motivation || "", selfPr: json.selfPr || "" }),
+            });
+            const result = await res.json();
+            if (result.ok) {
+              if (result.motivation) setByPath("motivation", limitTextLength(normalizeText(result.motivation), MOTIVATION_MAX_LENGTH));
+              if (result.selfPr) setByPath("selfPromotion", normalizeText(result.selfPr));
+            }
+          } catch (e) {
+            console.error("Auto-improve failed:", e);
+          }
+        }, 500);
+      } else {
+        setActiveTab("basic");
+      }
+
+      setNeoactToast("NeoActデータハブから候補者データを取り込みました！各タブの内容を確認してください。");
+      setTimeout(() => setNeoactToast(null), 5000);
+    } catch (e) {
+      console.error("NeoAct data import failed:", e);
     }
   }, [hasHydrated]);
 
@@ -896,6 +1050,13 @@ export default function ResumeBuilder() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 flex flex-col">
+      {/* NeoAct Import Toast */}
+      {neoactToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-in fade-in slide-in-from-top duration-300">
+          <span className="text-sm font-medium">{neoactToast}</span>
+          <button onClick={() => setNeoactToast(null)} className="text-white/80 hover:text-white font-bold text-lg leading-none">&times;</button>
+        </div>
+      )}
       <header className="bg-white shadow-sm p-4 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto flex items-center justify-between relative">
           <div className="flex items-center gap-2">
