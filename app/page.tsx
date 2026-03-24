@@ -241,6 +241,30 @@ export default function ResumeBuilder() {
         return "graduated";
       };
 
+      // NeoAct address parsing
+      // address1 = "都道府県・市区町村・番地" (e.g. "東京都府中市清水が丘1-9-4")
+      // address2 = "建物名・部屋番号" (e.g. "ドルチェ府中弐番館204号室")
+      const parseNeoActAddress = (addr1: string, addr2: string) => {
+        let prefecture = "";
+        let city = "";
+        const building = addr2 || "";
+
+        if (addr1) {
+          const prefMatch = addr1.match(/^(北海道|東京都|京都府|大阪府|.+?[県])(.*)$/);
+          if (prefMatch) {
+            prefecture = prefMatch[1];
+            city = prefMatch[2].trim();
+          } else {
+            // 都道府県が分離できない場合はcityに全部入れる
+            city = addr1;
+          }
+        }
+
+        return { prefecture, city, building };
+      };
+
+      const parsedAddr = parseNeoActAddress(json.address1 || "", json.address2 || "");
+
       const incoming: ResumeData = {
         profile: {
           lastName: json.lastName || "",
@@ -253,10 +277,10 @@ export default function ResumeBuilder() {
           email: json.email || "",
           address: {
             postalCode: json.postalCode || "",
-            prefecture: json.address1 || "",
-            city: "",
-            block: json.address2 || "",
-            building: "",
+            prefecture: parsedAddr.prefecture,
+            city: parsedAddr.city,
+            block: "",
+            building: parsedAddr.building,
             kana: "",
           },
           contactAddress: { postalCode: "", prefecture: "", city: "", block: "", building: "", kana: "", phone: "", email: "" },
@@ -336,8 +360,53 @@ export default function ResumeBuilder() {
         setActiveTab("basic");
       }
 
-      setNeoactToast("NeoActデータハブから候補者データを取り込みました！各タブの内容を確認してください。");
-      setTimeout(() => setNeoactToast(null), 5000);
+      // PDF履歴書のURLが含まれている場合、非同期でPDFを読み込みAI解析する
+      if (json.pdfUrl) {
+        setNeoactToast("NeoActデータを取り込みました。PDFを読み込んでいます...");
+        (async () => {
+          try {
+            console.log("[NeoAct] Fetching PDF from:", json.pdfUrl);
+            const pdfRes = await fetch(json.pdfUrl);
+            if (!pdfRes.ok) throw new Error(`PDF fetch failed: ${pdfRes.status}`);
+            const arrayBuffer = await pdfRes.arrayBuffer();
+
+            const text = await extractTextFromPdf(arrayBuffer);
+            if (!text.trim()) {
+              console.warn("[NeoAct] PDF text extraction returned empty");
+              setNeoactToast("PDFからテキストを抽出できませんでした");
+              setTimeout(() => setNeoactToast(null), 5000);
+              return;
+            }
+
+            console.log("[NeoAct] PDF text extracted, sending to AI normalize...");
+            const normalizeRes = await fetch("/api/normalize/resume", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ text }),
+            });
+            const result = await normalizeRes.json();
+
+            if (result?.ok && result?.resumeData?.profile) {
+              const currentResume = useResumeStore.getState().resume;
+              const pdfMerged = mergeResumeData(currentResume, result.resumeData);
+              setAll(pdfMerged);
+              console.log("[NeoAct] PDF data merged successfully");
+              setNeoactToast("PDFから情報を取得しました！各タブの内容を確認してください。");
+            } else {
+              console.warn("[NeoAct] PDF normalize failed:", result?.error);
+              setNeoactToast("PDFの解析に失敗しました");
+            }
+            setTimeout(() => setNeoactToast(null), 5000);
+          } catch (e) {
+            console.error("[NeoAct] PDF auto-import failed:", e);
+            setNeoactToast("PDFの取得に失敗しました");
+            setTimeout(() => setNeoactToast(null), 5000);
+          }
+        })();
+      } else {
+        setNeoactToast("NeoActデータハブから候補者データを取り込みました！各タブの内容を確認してください。");
+        setTimeout(() => setNeoactToast(null), 5000);
+      }
     } catch (e) {
       console.error("NeoAct data import failed:", e);
     }
@@ -487,20 +556,26 @@ export default function ResumeBuilder() {
   };
 
 
+  // PDF.jsでArrayBufferからテキストを抽出する共通関数
+  const extractTextFromPdf = async (arrayBuffer: ArrayBuffer): Promise<string> => {
+    const pdfjs = await import("pdfjs-dist");
+    pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    let text = "";
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map((item: any) => item.str).join(" ") + "\n";
+    }
+    return text;
+  };
+
   // Feature 1: PDF Upload handler
   const handlePdfUpload = async (file: File) => {
     setIsPdfExtracting(true);
     try {
-      const pdfjs = await import("pdfjs-dist");
-      pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-      let text = "";
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        text += content.items.map((item: any) => item.str).join(" ") + "\n";
-      }
+      const text = await extractTextFromPdf(arrayBuffer);
       if (!text.trim()) {
         alert("PDFからテキストを抽出できませんでした。スキャンPDFや画像PDFは対応していません。");
         return;

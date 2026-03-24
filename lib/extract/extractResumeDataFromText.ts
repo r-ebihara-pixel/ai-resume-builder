@@ -203,12 +203,18 @@ ${normalized}
 
     // --- Correction: Split prefecture from city if prefecture is empty ---
     if (!addr.prefecture && addr.city) {
-        const prefMatch = addr.city.match(/^(北海道|.+?県|.+?府|東京都)(.*)$/);
+        const prefMatch = addr.city.match(/^(北海道|東京都|京都府|大阪府|.+?[県])(.*)$/);
         if (prefMatch) {
             addr.prefecture = prefMatch[1];
             addr.city = prefMatch[2].trim(); // Trim the remaining city part
             warnings.push(`住所の都道府県（${addr.prefecture}）を分離しました。`);
         }
+    }
+
+    // --- Correction: Merge block into city so the form field shows the full address ---
+    if (addr.block) {
+        addr.city = (addr.city || "") + addr.block;
+        addr.block = "";
     }
 
     const cityStr = addr.city || "";
