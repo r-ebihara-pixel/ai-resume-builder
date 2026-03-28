@@ -2403,7 +2403,7 @@ export default function ResumeBuilder() {
                     {previewMode === "resume" ? (
                       <ResumePreview formData={resumeData} id="resume-preview" />
                     ) : previewMode === "career" ? (
-                      <CareerSheetPreview formData={resumeData} id="career-preview-visible" rawText={editedCareerText} />
+                      <CareerSheetPreview formData={resumeData} id="career-preview-visible" />
                     ) : (
                       <RecommendationPreview
                         id="recommendation-preview"
@@ -2417,7 +2417,7 @@ export default function ResumeBuilder() {
                     {/* Hidden Career Preview for PDF export (when in resume mode) */}
                     {previewMode === "resume" && (
                       <div style={{ display: "none" }}>
-                        <CareerSheetPreview formData={resumeData} id="career-preview" rawText={editedCareerText} />
+                        <CareerSheetPreview formData={resumeData} id="career-preview" />
                       </div>
                     )}
                     {/* Hidden Recommendation Preview for PDF export (when not in recommendation mode) */}
