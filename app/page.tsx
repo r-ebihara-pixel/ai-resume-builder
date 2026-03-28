@@ -100,6 +100,7 @@ type Tab =
 type RecommendationInput = {
   targetCompany: string;
   targetPosition: string;
+  meetingNotes: string; // Interview / meeting minutes for AI generation
   summary: string;      // Agent's overall comment
   strengths: string;    // Strong points the agent wants to emphasize
   concerns: string;     // Risks / points to be aware of
@@ -129,11 +130,14 @@ export default function ResumeBuilder() {
     useState<RecommendationInput>({
       targetCompany: "",
       targetPosition: "",
+      meetingNotes: "",
       summary: "",
       strengths: "",
       concerns: "",
       matchReason: "",
     });
+  const [isGeneratingRecommendation, setIsGeneratingRecommendation] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   // Normalization State
   const [rawPasteText, setRawPasteText] = useState("");
@@ -889,6 +893,37 @@ export default function ResumeBuilder() {
     ]));
 
     return lines.join("\n");
+  };
+
+  const handleGenerateRecommendationWithAI = async () => {
+    setIsGeneratingRecommendation(true);
+    try {
+      const res = await fetch("/api/recommendation/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resumeData,
+          meetingNotes: recommendationInput.meetingNotes,
+          targetCompany: recommendationInput.targetCompany,
+          targetPosition: recommendationInput.targetPosition,
+          summary: recommendationInput.summary,
+          strengths: recommendationInput.strengths,
+          concerns: recommendationInput.concerns,
+          matchReason: recommendationInput.matchReason,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setEditedRecommendationText(data.text);
+        setIsRecommendationManual(true);
+      } else {
+        alert("AIでの生成に失敗しました：" + data.error);
+      }
+    } catch {
+      alert("通信エラーが発生しました。");
+    } finally {
+      setIsGeneratingRecommendation(false);
+    }
   };
 
   // 写真アップロード
@@ -2200,128 +2235,135 @@ export default function ResumeBuilder() {
                 推薦文（エージェント向け）
               </h2>
 
-              {/* Input form for agent-only fields */}
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    推薦先企業名
+              {/* AI Generation Section */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Wand2 size={18} className="text-blue-600" />
+                  <h3 className="text-sm font-bold text-blue-800">AIで推薦文を自動生成</h3>
+                </div>
+                <p className="text-xs text-blue-700">
+                  面談メモや議事録を貼り付けると、履歴書・職務経歴書の内容と合わせてAIが推薦文を作成します。
+                </p>
+
+                {/* Target company / position */}
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700">推薦先企業名</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-white"
+                      value={recommendationInput.targetCompany}
+                      onChange={(e) => setRecommendationInput((prev) => ({ ...prev, targetCompany: e.target.value }))}
+                      placeholder="例）株式会社〇〇"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700">推薦ポジション</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-white"
+                      value={recommendationInput.targetPosition}
+                      onChange={(e) => setRecommendationInput((prev) => ({ ...prev, targetPosition: e.target.value }))}
+                      placeholder="例）インフラエンジニア（運用・保守）"
+                    />
+                  </div>
+                </div>
+
+                {/* Meeting notes */}
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700">
+                    面談メモ・議事録
+                    <span className="ml-2 text-blue-600 font-normal">（貼り付けるだけでOK）</span>
                   </label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                    value={recommendationInput.targetCompany}
-                    onChange={(e) =>
-                      setRecommendationInput((prev) => ({
-                        ...prev,
-                        targetCompany: e.target.value,
-                      }))
-                    }
-                    placeholder="例）株式会社〇〇"
+                  <textarea
+                    className="w-full h-40 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-white leading-relaxed"
+                    value={recommendationInput.meetingNotes}
+                    onChange={(e) => setRecommendationInput((prev) => ({ ...prev, meetingNotes: e.target.value }))}
+                    placeholder={`例）
+・転職理由：現職では〇〇の経験が積めないため、〇〇に挑戦したい
+・志望動機：貴社の〇〇事業に魅力を感じており…
+・強み：コミュニケーション力が高く、チームをまとめる力がある
+・懸念点：〇〇の経験が浅い
+・面談印象：落ち着いた話し方で信頼感がある。質問も的確。`}
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    推薦ポジション
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                    value={recommendationInput.targetPosition}
-                    onChange={(e) =>
-                      setRecommendationInput((prev) => ({
-                        ...prev,
-                        targetPosition: e.target.value,
-                      }))
-                    }
-                    placeholder="例）インフラエンジニア（運用・保守）"
-                  />
-                </div>
+                <button
+                  onClick={handleGenerateRecommendationWithAI}
+                  disabled={isGeneratingRecommendation}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition font-medium"
+                >
+                  {isGeneratingRecommendation ? (
+                    <><Loader2 className="w-5 h-5 animate-spin" />AIが推薦文を生成中...</>
+                  ) : (
+                    <><Wand2 size={18} />AIで推薦文を生成する</>
+                  )}
+                </button>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    総評（エージェントコメント）
-                  </label>
-                  <textarea
-                    className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                    value={recommendationInput.summary}
-                    onChange={(e) =>
-                      setRecommendationInput((prev) => ({
-                        ...prev,
-                        summary: e.target.value,
-                      }))
-                    }
-                    placeholder="候補者の人柄・総合的な印象を簡潔に記入します。未入力の場合はテンプレート文が自動補完されます。"
-                  />
-                </div>
+              {/* Optional detail fields (collapsible) */}
+              <div className="border border-gray-200 rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setIsDetailOpen((v) => !v)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition text-sm font-medium text-gray-700"
+                >
+                  <span>詳細設定（任意）― 各セクションを手動で指定する場合</span>
+                  <span className="text-gray-400">{isDetailOpen ? "▲" : "▼"}</span>
+                </button>
 
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    特に推したいポイント
-                  </label>
-                  <textarea
-                    className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                    value={recommendationInput.strengths}
-                    onChange={(e) =>
-                      setRecommendationInput((prev) => ({
-                        ...prev,
-                        strengths: e.target.value,
-                      }))
-                    }
-                    placeholder="例）現職での数値実績、継続力、コミュニケーション力など"
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    ご留意いただきたい点
-                  </label>
-                  <textarea
-                    className="w-full h-28 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                    value={recommendationInput.concerns}
-                    onChange={(e) =>
-                      setRecommendationInput((prev) => ({
-                        ...prev,
-                        concerns: e.target.value,
-                      }))
-                    }
-                    placeholder="例）経験年数、勤務地制約、これからキャッチアップが必要な領域など"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    貴社ポジションとのマッチ理由
-                  </label>
-                  <textarea
-                    className="w-full h-28 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                    value={recommendationInput.matchReason}
-                    onChange={(e) =>
-                      setRecommendationInput((prev) => ({
-                        ...prev,
-                        matchReason: e.target.value,
-                      }))
-                    }
-                    placeholder="企業理解・ポジション要件を踏まえたマッチ理由を記入します。未入力の場合は汎用テンプレートを使用します。"
-                  />
-                </div>
+                {isDetailOpen && (
+                  <div className="p-4 space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-gray-700">総評（エージェントコメント）</label>
+                        <textarea
+                          className="w-full h-28 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                          value={recommendationInput.summary}
+                          onChange={(e) => setRecommendationInput((prev) => ({ ...prev, summary: e.target.value }))}
+                          placeholder="候補者の人柄・総合的な印象。未入力時はAIまたはテンプレートが補完します。"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-gray-700">特に推したいポイント</label>
+                        <textarea
+                          className="w-full h-28 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                          value={recommendationInput.strengths}
+                          onChange={(e) => setRecommendationInput((prev) => ({ ...prev, strengths: e.target.value }))}
+                          placeholder="例）現職での数値実績、継続力、コミュニケーション力など"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-gray-700">ご留意いただきたい点</label>
+                        <textarea
+                          className="w-full h-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                          value={recommendationInput.concerns}
+                          onChange={(e) => setRecommendationInput((prev) => ({ ...prev, concerns: e.target.value }))}
+                          placeholder="例）経験年数、勤務地制約、キャッチアップが必要な領域など"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-gray-700">貴社ポジションとのマッチ理由</label>
+                        <textarea
+                          className="w-full h-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                          value={recommendationInput.matchReason}
+                          onChange={(e) => setRecommendationInput((prev) => ({ ...prev, matchReason: e.target.value }))}
+                          placeholder="企業・ポジション要件を踏まえたマッチ理由。未入力時はAIまたはテンプレートが補完します。"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Generated recommendation text */}
               <div className="space-y-3">
-                <div className="flex  justify-between items-center">
-                  <h3 className="text-md font-semibold text-gray-800">
-                    生成された推薦文
-                  </h3>
+                <div className="flex justify-between items-center">
+                  <h3 className="text-md font-semibold text-gray-800">生成された推薦文</h3>
                   <div className="flex gap-2">
                     <button
-                      onClick={() =>
-                        copyToClipboard(editedRecommendationText)
-                      }
+                      onClick={() => copyToClipboard(editedRecommendationText)}
                       className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
                     >
                       <Copy size={16} />
