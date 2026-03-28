@@ -773,6 +773,8 @@ export default function ResumeBuilder() {
     data: ResumeData,
     rec: RecommendationInput
   ): string => {
+    const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
     const lines: string[] = [];
 
     const fullName = `${data.profile?.lastName ?? ""} ${data.profile?.firstName ?? ""}`.trim();
@@ -784,7 +786,6 @@ export default function ResumeBuilder() {
     const company = rec.targetCompany || "御社";
     const position = rec.targetPosition || "募集ポジション";
 
-    // Header (Introductory lines removed as requested)
     // Basic info
     if (fullName) {
       lines.push(`候補者名：${fullName}${ageStr ? `（${ageStr}歳）` : ""}`);
@@ -796,9 +797,12 @@ export default function ResumeBuilder() {
     if (rec.summary.trim()) {
       lines.push(normalizeText(rec.summary));
     } else {
-      lines.push(
-        `${fullName || "本候補者"}は、これまでのご経験を通じて培った対人コミュニケーション力と、着実に物事をやり遂げる継続力を備えており、ポテンシャル・人柄ともに自信を持ってご推薦できる方です。`
-      );
+      lines.push(pick([
+        `${fullName || "本候補者"}は、これまでのご経験を通じて培った対人コミュニケーション力と、着実に物事をやり遂げる継続力を備えており、ポテンシャル・人柄ともに自信を持ってご推薦できる方です。`,
+        `${fullName || "本候補者"}は、誠実さと素直さを兼ね備えた方で、周囲からの信頼も厚く、どのような環境においても着実に成果を積み上げられる方です。人物面を含め、自信を持ってご紹介させていただきます。`,
+        `${fullName || "本候補者"}は、高い適応力と学習意欲を持ち合わせており、新しい環境でも早期に力を発揮できる方です。人柄の良さも折り紙付きで、ぜひご検討いただきたい候補者です。`,
+        `${fullName || "本候補者"}は、チームの中で潤滑油的な役割を担いながら、自らも積極的に行動できるバランスに優れた方です。長期的な活躍が期待できると判断し、ご推薦申し上げます。`,
+      ]));
     }
     lines.push("");
 
@@ -807,9 +811,13 @@ export default function ResumeBuilder() {
     if (rec.strengths.trim()) {
       lines.push(normalizeText(rec.strengths));
     } else {
-      lines.push("・周囲と連携しながら業務を進められる協調性");
-      lines.push("・指示待ちではなく、自ら課題を見つけて行動できる主体性");
-      lines.push("・未経験領域に対しても学習を継続できる素直さ・吸収力");
+      const strengthSets = [
+        ["・周囲と連携しながら業務を進められる協調性", "・指示待ちではなく、自ら課題を見つけて行動できる主体性", "・未経験領域に対しても学習を継続できる素直さ・吸収力"],
+        ["・真摯に物事に取り組む姿勢と誠実な人柄", "・コミュニケーションの丁寧さとホウレンソウの徹底", "・困難な状況でも前向きに取り組み続けるメンタルの強さ"],
+        ["・環境変化への適応力の高さ", "・自己成長に対する高いモチベーション", "・相手の立場に立って物事を考えられる思いやりと柔軟性"],
+        ["・責任感が強く、任せた業務を最後までやり遂げる粘り強さ", "・論理的に物事を整理し、わかりやすく伝えられる表現力", "・幅広い業種・職種での経験から培われた多角的な視点"],
+      ];
+      pick(strengthSets).forEach(s => lines.push(s));
     }
     lines.push("");
 
@@ -817,7 +825,10 @@ export default function ResumeBuilder() {
     const workHistory = data.workHistory ?? [];
     lines.push("【ご経歴の概要】");
     if (workHistory.length === 0) {
-      lines.push("現在、職務経歴の登録はありませんが、ポテンシャル採用候補としてのご提案となります。");
+      lines.push(pick([
+        "現在、職務経歴の登録はありませんが、ポテンシャル採用候補としてのご提案となります。",
+        "職務経歴の詳細については別途ご共有いたしますが、ポテンシャルを重視したご提案となります。",
+      ]));
     } else {
       workHistory.forEach((work) => {
         const startY = work.startDate?.year ?? "";
@@ -847,9 +858,12 @@ export default function ResumeBuilder() {
     if (rec.matchReason.trim()) {
       lines.push(normalizeText(rec.matchReason));
     } else {
-      lines.push(
-        `${position}において求められる「基礎的なITリテラシー」や「周囲と協力しながら業務を遂行する姿勢」に加え、未経験領域に対しても前向きにキャッチアップしていくスタンスが、貴社の組織風土・育成スタンスと非常に親和性が高いと感じております。`
-      );
+      lines.push(pick([
+        `${position}において求められる「基礎的なITリテラシー」や「周囲と協力しながら業務を遂行する姿勢」に加え、未経験領域に対しても前向きにキャッチアップしていくスタンスが、貴社の組織風土・育成スタンスと非常に親和性が高いと感じております。`,
+        `${position}に求められる誠実さと柔軟な対応力を本候補者は十分に備えており、入社後の早期立ち上がりも期待できます。${company}の成長フェーズと候補者のキャリア志向が合致していると判断しております。`,
+        `これまでのご経験で培ったスキルと、${company}が${position}に求める要件との親和性が高く、即戦力としてではなくとも、短期間でのキャッチアップが見込めます。長期的な観点でのご検討をお願いいたします。`,
+        `${company}の事業方針や職場環境についてご説明した際、候補者は特に強い関心を示しておりました。単なるスキルマッチだけでなく、カルチャーフィットという観点でも非常に有望な候補者です。`,
+      ]));
     }
     lines.push("");
 
@@ -858,17 +872,21 @@ export default function ResumeBuilder() {
     if (rec.concerns.trim()) {
       lines.push(normalizeText(rec.concerns));
     } else {
-      lines.push(
-        "現時点では実務経験が限定的な部分もございますが、その分、貴社での教育・OJTを通じて柔軟に染まっていける余地が大きいと捉えております。面接の場においては、これまでのご経験や学習状況について率直にご確認いただけますと幸いです。"
-      );
+      lines.push(pick([
+        "現時点では実務経験が限定的な部分もございますが、その分、貴社での教育・OJTを通じて柔軟に染まっていける余地が大きいと捉えております。面接の場においては、これまでのご経験や学習状況について率直にご確認いただけますと幸いです。",
+        "一部の業務領域については経験が浅い点がございますが、吸収力の高さと意欲の強さでカバーできると判断しております。選考の中でご本人の意欲や将来性を直接確認いただけますと幸いです。",
+        "ご経歴上、職種の幅が広いため、専門性の深さという点では補足が必要な場合もございます。一方で、その多様な経験が応用力の高さにつながっており、面接でのご確認をお勧めいたします。",
+        "転職回数については事前にご説明できればと存じます。それぞれに明確なご理由がございますので、面接の場でご本人より直接お聞きいただけますと、より正確にご判断いただけるかと思います。",
+      ]));
     }
     lines.push("");
 
     // Closing
-    lines.push("以上となります。");
-    lines.push(
-      "ぜひ一度、面接の機会を頂戴できますと幸いです。ご検討のほど、何卒よろしくお願い申し上げます。"
-    );
+    lines.push(pick([
+      "以上となります。\nぜひ一度、面接の機会を頂戴できますと幸いです。ご検討のほど、何卒よろしくお願い申し上げます。",
+      "以上、簡単ではございますがご推薦申し上げます。\nご不明な点がございましたら、お気軽にご連絡ください。何卒よろしくお願い申し上げます。",
+      "以上が候補者のご紹介となります。\nご興味をお持ちいただけましたら、ぜひ面談の機会をいただけますよう、よろしくお願い申し上げます。",
+    ]));
 
     return lines.join("\n");
   };
