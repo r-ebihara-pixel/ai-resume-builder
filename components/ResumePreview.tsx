@@ -198,7 +198,7 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
                 </div>
                 <div className="flex-1 flex flex-col px-2 pt-1">
                   <span className="text-xs">{renderWithMinchoDigits(data.profile.address.postalCode)}</span>
-                  <span className="text-xs mt-1">{data.profile.address.prefecture}{data.profile.address.city}</span>
+                  <span className="text-xs mt-1">{data.profile.address.prefecture}{data.profile.address.city}{data.profile.address.block}</span>
                   {data.profile.address.building && <span className="text-xs">{data.profile.address.building}</span>}
                 </div>
               </div>
@@ -347,17 +347,13 @@ export const ResumePreview = React.forwardRef<HTMLDivElement, Props>(({ formData
           })}
         </div>
 
-        {/* 志望の動機、特技、自己PR、アピールポイントなど */}
+        {/* 志望の動機、特技、アピールポイントなど */}
         <div className="border-2 border-black mb-4 h-[70mm]">
           <div className="border-b border-black px-2 py-1 text-xs">
-            志望の動機、特技、自己PR、アピールポイントなど
+            志望の動機、特技、アピールポイントなど
           </div>
           <div className="p-2 text-xs leading-relaxed whitespace-pre-wrap h-[calc(70mm-8mm)] overflow-hidden">
-            {renderWithMinchoDigits(
-              data.motivation && data.selfPromotion
-                ? `【志望動機】\n${data.motivation}\n\n【自己PR】\n${data.selfPromotion}`
-                : data.motivation || data.selfPromotion || ""
-            )}
+            {renderWithMinchoDigits(data.motivation || "")}
           </div>
         </div>
 
